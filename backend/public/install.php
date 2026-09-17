@@ -59,8 +59,9 @@ if ($appDir !== null) {
 // Guards
 // ---------------------------------------------------------------------------
 
-function halt(string $title, string $message): never
+function halt(string $title, string $message, int $status = 403): never
 {
+    http_response_code($status);
     render($title, '<div class="alert">' . htmlspecialchars($message, ENT_QUOTES) . '</div>');
     exit;
 }
@@ -76,11 +77,17 @@ if ($appDir === null) {
     );
 }
 
-if (is_file($configPath) && ($_GET['step'] ?? '') !== 'done') {
+// Once the site is configured the installer is closed to everyone. The one
+// exception is the final page, and only for the browser that just completed the
+// install — otherwise `?step=done` would be a way around this guard for anybody
+// who found the file.
+$justInstalled = ($_GET['step'] ?? '') === 'done' && isset($_SESSION['installer_site_url']);
+
+if (is_file($configPath) && !$justInstalled) {
     halt(
         'Already installed',
-        'A configuration file already exists. Delete install.php. To reinstall, remove app/config.php first — '
-        . 'note that this does not delete any data.'
+        'This site is configured, so the installer is disabled. Delete install.php. To reinstall, remove '
+        . 'app/config.php first — note that this does not delete any data.'
     );
 }
 

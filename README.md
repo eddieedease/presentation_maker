@@ -183,8 +183,23 @@ generated JWT secret, and points the frontend at wherever you installed it.
 **5. Delete `install.php`**
 
 The last step does this for you. If your file permissions prevent it, the page
-says so — remove the file over FTP. An installer left on a live server lets
-anyone reconfigure your site.
+says so — remove the file over FTP.
+
+### Is the installer safe to leave lying around?
+
+It disables itself. The moment `app/config.php` exists, every request to
+`install.php` — any step, GET or POST — answers **403 Already installed**, so a
+bot that finds the file cannot reconfigure the site, reset your administrator
+password or point it at another database. The only exception is the finish page,
+and only for the browser session that just completed the install.
+
+Delete it anyway. It is one less thing to reason about, and the finish page
+offers to do it for you.
+
+The window that genuinely matters is **before** you install: between uploading
+the files and finishing the wizard, anyone who reaches `install.php` can claim
+the site, because at that point there is nothing to authenticate against. Upload
+and install in one sitting rather than leaving a half-deployed site up overnight.
 
 ### What gets uploaded
 
