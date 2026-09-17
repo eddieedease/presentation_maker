@@ -1,4 +1,9 @@
-@import 'tailwindcss';
+/* The Angular workspace root is the repository root, so Tailwind's automatic
+   source detection would also scan backend/ and deploy/ — where ordinary words
+   like "table", "filter" or "collapse" get mistaken for utility class names.
+   Scan only the Angular sources instead. */
+@import 'tailwindcss' source(none);
+@source './';
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;

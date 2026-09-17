@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": [
+    "frontend/src/**/*.ts"
+  ],
+  "exclude": [
+    "frontend/src/**/*.spec.ts"
+  ]
+}

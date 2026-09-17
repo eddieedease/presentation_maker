@@ -1,12 +1,13 @@
 {
-  "name": "frontend",
+  "name": "presentation-maker",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "package": "ng build && cd dist/presentation-maker && zip -qr ../presentation-maker.zip ."
   },
   "private": true,
   "packageManager": "npm@11.19.0",

@@ -20,7 +20,7 @@ docker compose up -d --build
 ```
 
 ```bash
-cd frontend && npm install && npm start
+npm install && npm start
 ```
 
 | Service              | URL                     |
@@ -94,11 +94,16 @@ Node on the server.
 **1. Build the bundle**
 
 ```bash
-./scripts/build-release.sh
+ng build
 ```
 
-That compiles the frontend and assembles `release/presentation-maker/` plus a
-zip of the same thing (about 550 KB).
+A production build *is* the deployable bundle: `dist/presentation-maker/`
+contains the compiled frontend, the PHP API, the installer and the `.htaccess`
+rules, about 2 MB in total. To get a zip for upload as well:
+
+```bash
+npm run package
+```
 
 **2. Upload it**
 
@@ -223,23 +228,35 @@ browsers never send to a server.
 
 ```
 .
-├── docker-compose.yml        # api + db + phpmyadmin
+├── angular.json              # Angular workspace; the repo root is the workspace root
+├── package.json              # one install, one `ng build` for the whole bundle
+├── docker-compose.yml        # api + db + phpmyadmin for local development
 ├── docker/php/Dockerfile     # php:8.3-apache, pdo_mysql, rewrite
-├── deploy/                   # .htaccess templates for the release bundle
-├── scripts/build-release.sh  # builds the shared-hosting bundle
+├── deploy/
+│   ├── web/.htaccess         # copied to the bundle root by the build
+│   └── app/.htaccess         # copied to app/, denies all web access
 ├── backend/
 │   ├── public/
-│   │   ├── index.php         # router and route table (becomes api.php)
+│   │   ├── api.php           # front controller (router and route table)
 │   │   └── install.php       # the web installer
 │   ├── database/schema.sql   # one schema, used by Docker and the installer
 │   └── src/
 │       ├── Controllers/      # Auth, OAuth, Project, Public
 │       └── Support/          # Router, Jwt, TokenService, DeckNormalizer, …
 └── frontend/
-    └── src/app/
-        ├── core/             # models, services, guard, interceptor
-        ├── shared/           # reveal-deck, element-view, deck-style
-        └── features/         # landing, auth, workspace, editor, present
+    ├── public/favicon.ico
+    └── src/
+        ├── styles.css
+        └── app/
+            ├── core/         # models, services, guard, interceptor
+            ├── shared/       # reveal-deck, element-view, deck-style
+            └── features/     # landing, auth, workspace, editor, present
+```
+
+Assets in `angular.json` under the **production** configuration copy `backend/`
+and `deploy/` into the output, which is why a plain `ng build` produces something
+you can upload as-is.
+
 ```
 
 The backend has **no Composer dependencies** — JWT signing/verification is a small
@@ -256,6 +273,9 @@ HS256 implementation in `src/Support/Jwt.php`, so `docker compose up` is all you
   cannot run against it.
 - Changing `backend/database/schema.sql` only affects a **fresh** database. To re-apply:
   `docker compose down -v && docker compose up -d`.
-- For hosting, use `./scripts/build-release.sh` rather than a bare `npm run build`:
-  it adds the front controller, the installer and the `.htaccess` rules that make
-  deep links like `/p/<slug>` resolve.
+- `ng build` (the production configuration) emits the full deployable bundle;
+  `ng serve` and `ng build --configuration development` use frontend-only assets,
+  so the PHP files are not served during development.
+- `styles.css` pins Tailwind's source scanning to `frontend/src`. Without that,
+  automatic detection would scan `backend/` too and mistake ordinary words like
+  "table" or "filter" for utility class names.

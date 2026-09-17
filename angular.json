@@ -1,0 +1,149 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "cli": {
+    "packageManager": "npm"
+  },
+  "newProjectRoot": "projects",
+  "projects": {
+    "presentation-maker": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "frontend",
+      "sourceRoot": "frontend/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "frontend/src/main.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "frontend/public"
+              },
+              {
+                "glob": "**/*.css",
+                "input": "node_modules/reveal.js/dist/theme",
+                "output": "reveal/theme"
+              },
+              {
+                "glob": "reveal.css",
+                "input": "node_modules/reveal.js/dist",
+                "output": "reveal"
+              },
+              {
+                "glob": "*.css",
+                "input": "node_modules/reveal.js/plugin/highlight",
+                "output": "reveal/highlight"
+              }
+            ],
+            "styles": [
+              "frontend/src/styles.css"
+            ],
+            "outputPath": {
+              "base": "dist/presentation-maker",
+              "browser": ""
+            }
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all",
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "frontend/public"
+                },
+                {
+                  "glob": "**/*.css",
+                  "input": "node_modules/reveal.js/dist/theme",
+                  "output": "reveal/theme"
+                },
+                {
+                  "glob": "reveal.css",
+                  "input": "node_modules/reveal.js/dist",
+                  "output": "reveal"
+                },
+                {
+                  "glob": "*.css",
+                  "input": "node_modules/reveal.js/plugin/highlight",
+                  "output": "reveal/highlight"
+                },
+                {
+                  "glob": "api.php",
+                  "input": "backend/public",
+                  "output": ""
+                },
+                {
+                  "glob": "install.php",
+                  "input": "backend/public",
+                  "output": ""
+                },
+                {
+                  "glob": "**/*.php",
+                  "input": "backend/src",
+                  "output": "app/src"
+                },
+                {
+                  "glob": "schema.sql",
+                  "input": "backend/database",
+                  "output": "app/database"
+                },
+                {
+                  "glob": ".htaccess",
+                  "input": "deploy/web",
+                  "output": ""
+                },
+                {
+                  "glob": ".htaccess",
+                  "input": "deploy/app",
+                  "output": "app"
+                }
+              ]
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "presentation-maker:build:production"
+            },
+            "development": {
+              "buildTarget": "presentation-maker:build:development"
+            }
+          },
+          "defaultConfiguration": "development",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          }
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "tsconfig.spec.json"
+          }
+        }
+      }
+    }
+  }
+}
