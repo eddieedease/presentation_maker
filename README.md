@@ -30,11 +30,34 @@ npm install && npm start
 | phpMyAdmin           | http://localhost:8081   |
 | MySQL (host port)    | `localhost:3307`        |
 
-The dev server proxies `/api` to the container (`frontend/proxy.conf.json`), so
-there is no CORS setup to do locally.
+The dev server proxies `/api` to the container (`proxy.conf.json`), so there is
+no CORS setup to do locally.
 
-Sign in at `/login`, or create an account — email + password works out of the box
-and needs no OAuth credentials.
+### Signing in during development
+
+The Docker stack seeds a demo account, so there is nothing to set up:
+
+| Email | Password |
+| ----- | -------- |
+| `demo@example.com` | `demo12345` |
+
+Register your own account at `/login` any time — email and password sign-in works
+out of the box and needs no OAuth credentials.
+
+> **This account exists only in the Docker development database.** It is created
+> by `backend/database/seed-dev.sql`, which docker-compose mounts alongside the
+> schema. The web installer never loads that file, so a hosted install has no
+> demo account — there, *you* choose the administrator credentials during
+> installation. Never move the seed into `schema.sql`.
+
+The seed runs when the database volume is first created. If you already have a
+volume from before this was added, either apply it by hand:
+
+```bash
+docker compose exec -T db mysql -upresmaker -ppresmaker presmaker < backend/database/seed-dev.sql
+```
+
+or start from scratch with `docker compose down -v && docker compose up -d`.
 
 ---
 
@@ -124,7 +147,10 @@ it. Note the name, username and password.
 2. **Database** — your credentials, tested before it continues
 3. **Site & admin** — the site URL (detected automatically) and your
    administrator account, **which the installer creates for you** so you can
-   sign in the moment it finishes
+   sign in the moment it finishes. There is no default account and no seeded
+   password: the credentials are whatever you type here. (The
+   `demo@example.com` login from local development does not exist on a hosted
+   install.)
 4. **Finish** — it offers to delete itself
 
 The installer creates the schema, writes `app/config.php` with a freshly
@@ -239,7 +265,9 @@ browsers never send to a server.
 │   ├── public/
 │   │   ├── api.php           # front controller (router and route table)
 │   │   └── install.php       # the web installer
-│   ├── database/schema.sql   # one schema, used by Docker and the installer
+│   ├── database/
+│   │   ├── schema.sql        # one schema, used by Docker and the installer
+│   │   └── seed-dev.sql      # demo account; Docker only, never deployed
 │   └── src/
 │       ├── Controllers/      # Auth, OAuth, Project, Public
 │       └── Support/          # Router, Jwt, TokenService, DeckNormalizer, …
@@ -271,6 +299,11 @@ HS256 implementation in `src/Support/Jwt.php`, so `docker compose up` is all you
   environment otherwise (Docker). The dev stack ships no config file, so the two
   never collide, and it sets `APP_INSTALLER_DISABLED=1` so the bundled installer
   cannot run against it.
+- Passwords are bcrypt hashes and cannot be recovered. Locally, re-run
+  `seed-dev.sql` to reset the demo account. On a hosted install, delete
+  `app/config.php`, re-upload `install.php` and run it again with the same email:
+  the installer updates that user's password instead of failing, and your decks
+  are untouched.
 - Changing `backend/database/schema.sql` only affects a **fresh** database. To re-apply:
   `docker compose down -v && docker compose up -d`.
 - `ng build` (the production configuration) emits the full deployable bundle;
