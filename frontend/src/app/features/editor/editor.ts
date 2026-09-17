@@ -105,13 +105,18 @@ export class Editor {
   }
 
   /**
-   * Publishing is idempotent: a first click creates the link, later clicks
-   * refresh the snapshot behind the same slug so shared links never break.
+   * Opens the share dialog. For a deck that is already published this must not
+   * change anything — re-publishing is an explicit action inside the dialog.
+   * Otherwise revoking a link and then merely looking at the dialog would put
+   * the deck straight back online.
    */
   protected async openPublish(): Promise<void> {
     this.showPublish.set(true);
     this.copied.set(false);
-    await this.publish();
+
+    if (this.store.publication() === null) {
+      await this.publish();
+    }
   }
 
   protected async publish(): Promise<void> {

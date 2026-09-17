@@ -40,7 +40,7 @@
       </button>
       <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="openPreview()">Preview</button>
       <button type="button" class="btn-primary px-3 py-1.5 text-xs" (click)="openPublish()">
-        {{ store.publication() ? 'Update link' : 'Publish' }}
+        {{ store.publication() ? 'Share' : 'Publish' }}
       </button>
     </div>
   </header>
@@ -183,14 +183,25 @@
           </div>
 
           <p class="mt-3 text-xs text-slate-500">
-            {{ publication.viewCount }} {{ publication.viewCount === 1 ? 'view' : 'views' }} so far
+            {{ publication.viewCount }} {{ publication.viewCount === 1 ? 'view' : 'views' }} so far · live
+            version published {{ publication.updatedAt ?? publication.publishedAt }}
           </p>
 
-          <div class="mt-6 flex flex-wrap justify-end gap-2">
-            <button type="button" class="btn-danger px-3 py-1.5 text-xs" (click)="unpublish()">Revoke link</button>
+          <p class="mt-3 rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-400">
+            Viewers see the snapshot taken when you last published. Edits you make afterwards stay
+            private until you publish again.
+          </p>
+
+          <div class="mt-6 flex flex-wrap items-center justify-end gap-2">
+            <button type="button" class="btn-danger mr-auto px-3 py-1.5 text-xs" (click)="unpublish()">
+              Revoke link
+            </button>
             <a [href]="publicUrl(publication.slug)" target="_blank" rel="noopener" class="btn-ghost px-3 py-1.5 text-xs">
               Open
             </a>
+            <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="publish()">
+              Publish latest changes
+            </button>
             <button type="button" class="btn-primary px-3 py-1.5 text-xs" (click)="showPublish.set(false)">Done</button>
           </div>
         } @else {

@@ -114,9 +114,21 @@ While presenting, `S` opens the reveal.js speaker view with your slide notes.
 ## Publishing
 
 **Publish** freezes a snapshot of the deck at a public URL (`/p/<slug>`). Editing
-afterwards does not change the live deck until you publish again — and the slug
-stays the same, so links you have already shared keep working. **Revoke link**
-deletes the publication and the URL stops resolving immediately.
+afterwards does not change the live deck until you press **Publish latest
+changes** — and the slug stays the same, so links you have already shared keep
+working.
+
+**Revoke link** deletes the publication, and the URL stops resolving immediately.
+Publishing again afterwards mints a *new* slug, so a revoked link stays dead even
+if you later change your mind.
+
+Opening the **Share** dialog for a deck that is already published changes
+nothing; publishing and revoking are always explicit button presses.
+
+> **Images are not revoked with the deck.** An image stays readable at its own
+> `api/images/<token>` URL until you delete it from the image library, so anyone
+> who saved an image URL keeps that image. Delete the image itself if that
+> matters.
 
 ---
 
