@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { publicDeckUrl } from '../../core/api.config';
 import { apiMessage } from '../../core/api-error';
 import { ProjectSummary } from '../../core/models/project.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -108,7 +109,7 @@ export class Workspace {
   }
 
   protected publicUrl(slug: string): string {
-    return `${window.location.origin}/p/${slug}`;
+    return publicDeckUrl(slug);
   }
 
   protected async copyLink(slug: string, message = 'Link copied to your clipboard.'): Promise<void> {

@@ -1,0 +1,9 @@
+# The PHP sources, the schema and your generated config.php live here.
+# Nothing in this directory should ever be reachable over HTTP.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

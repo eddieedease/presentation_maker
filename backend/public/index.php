@@ -10,12 +10,16 @@ use App\Support\Request;
 use App\Support\Response;
 use App\Support\Router;
 
-spl_autoload_register(static function (string $class): void {
+// The application directory is app/ in a deployed bundle, and the parent of
+// public/ in the repository checkout.
+$appDir = is_dir(__DIR__ . '/app/src') ? __DIR__ . '/app' : dirname(__DIR__);
+
+spl_autoload_register(static function (string $class) use ($appDir): void {
     if (!str_starts_with($class, 'App\\')) {
         return;
     }
 
-    $path = __DIR__ . '/../src/' . str_replace('\\', '/', substr($class, 4)) . '.php';
+    $path = $appDir . '/src/' . str_replace('\\', '/', substr($class, 4)) . '.php';
     if (is_file($path)) {
         require $path;
     }

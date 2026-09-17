@@ -86,6 +86,88 @@ deletes the publication and the URL stops resolving immediately.
 
 ---
 
+## Deploy to shared hosting
+
+Shared hosting with PHP and MySQL is all this needs — no shell, no Composer, no
+Node on the server.
+
+**1. Build the bundle**
+
+```bash
+./scripts/build-release.sh
+```
+
+That compiles the frontend and assembles `release/presentation-maker/` plus a
+zip of the same thing (about 550 KB).
+
+**2. Upload it**
+
+Upload the *contents* of the bundle to your web root (`public_html`, `httpdocs`,
+`www`) — or to any subdirectory, which works too.
+
+**3. Create a MySQL database**
+
+In cPanel or Plesk, create a database and a user, and grant that user access to
+it. Note the name, username and password.
+
+**4. Open `install.php` in your browser**
+
+`https://example.com/install.php` walks through four steps:
+
+1. **Requirements** — PHP version, PDO/MySQL, mbstring, JSON, mod_rewrite and
+   whether `app/` is writable
+2. **Database** — your credentials, tested before it continues
+3. **Site & admin** — the site URL (detected automatically) and your
+   administrator account, **which the installer creates for you** so you can
+   sign in the moment it finishes
+4. **Finish** — it offers to delete itself
+
+The installer creates the schema, writes `app/config.php` with a freshly
+generated JWT secret, and points the frontend at wherever you installed it.
+
+**5. Delete `install.php`**
+
+The last step does this for you. If your file permissions prevent it, the page
+says so — remove the file over FTP. An installer left on a live server lets
+anyone reconfigure your site.
+
+### What gets uploaded
+
+```
+public_html/
+├── .htaccess          # /api → api.php, SPA fallback, caching, security headers
+├── index.html         # the Angular app
+├── main-*.js, *.css   # content-hashed, cached for a year
+├── reveal/            # reveal.js core, themes and highlight styles
+├── api.php            # PHP front controller
+├── install.php        # delete this after installing
+└── app/               # blocked from the web by its own .htaccess
+    ├── src/           # the PHP classes
+    ├── database/      # schema.sql
+    └── config.php     # written by the installer (0640)
+```
+
+`app/` is denied over HTTP by `app/.htaccess`, so your config and sources are not
+downloadable. Verify after installing: `https://example.com/app/config.php`
+must return **403**.
+
+### Notes
+
+- **Subdirectories work.** Install at `example.com/decks/` and the installer
+  rewrites the frontend's `<base href>` and stores matching URLs. Nothing to
+  configure by hand.
+- **Requires PHP 8.1+** and `pdo_mysql`. Most hosts let you pick the PHP version
+  in the control panel.
+- **To reinstall**, delete `app/config.php` and re-upload `install.php`. Your
+  data is untouched — the schema uses `CREATE TABLE IF NOT EXISTS`.
+- **To upgrade**, rebuild and upload everything *except* `app/config.php`.
+- If the API returns 500s, check that `mod_rewrite` is enabled and that
+  `AllowOverride All` applies to your web root — some hosts disable `.htaccess`.
+- **OAuth** needs the `curl` extension. Without it, email and password sign-in
+  still works.
+
+---
+
 ## API
 
 All `/api/projects*` routes require `Authorization: Bearer <accessToken>` and are
@@ -142,11 +224,14 @@ browsers never send to a server.
 ```
 .
 ├── docker-compose.yml        # api + db + phpmyadmin
-├── docker/
-│   ├── php/Dockerfile        # php:8.3-apache, pdo_mysql, rewrite
-│   └── mysql/001-schema.sql  # schema, applied on first boot
+├── docker/php/Dockerfile     # php:8.3-apache, pdo_mysql, rewrite
+├── deploy/                   # .htaccess templates for the release bundle
+├── scripts/build-release.sh  # builds the shared-hosting bundle
 ├── backend/
-│   ├── public/index.php      # router and route table
+│   ├── public/
+│   │   ├── index.php         # router and route table (becomes api.php)
+│   │   └── install.php       # the web installer
+│   ├── database/schema.sql   # one schema, used by Docker and the installer
 │   └── src/
 │       ├── Controllers/      # Auth, OAuth, Project, Public
 │       └── Support/          # Router, Jwt, TokenService, DeckNormalizer, …
@@ -165,8 +250,12 @@ HS256 implementation in `src/Support/Jwt.php`, so `docker compose up` is all you
 ## Notes
 
 - `backend/` is bind-mounted into the container: PHP edits are live, no rebuild.
-- Changing `docker/mysql/*.sql` only affects a **fresh** database. To re-apply:
+- Settings come from `config.php` when it exists (hosted installs) and from the
+  environment otherwise (Docker). The dev stack ships no config file, so the two
+  never collide, and it sets `APP_INSTALLER_DISABLED=1` so the bundled installer
+  cannot run against it.
+- Changing `backend/database/schema.sql` only affects a **fresh** database. To re-apply:
   `docker compose down -v && docker compose up -d`.
-- For a production build (`npm run build`), serve `frontend/dist/frontend/browser`
-  with an SPA fallback to `index.html` so deep links like `/p/<slug>` resolve, and
-  point `API_BASE_URL` at the real API origin.
+- For hosting, use `./scripts/build-release.sh` rather than a bare `npm run build`:
+  it adds the front controller, the installer and the `.htaccess` rules that make
+  deep links like `/p/<slug>` resolve.

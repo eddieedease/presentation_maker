@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { publicDeckUrl } from '../../core/api.config';
 import { apiMessage } from '../../core/api-error';
 import { ELEMENT_TYPES, ElementType } from '../../core/models/deck.model';
 import { RevealDeck } from '../../shared/reveal-deck';
@@ -131,7 +132,7 @@ export class Editor {
   }
 
   protected publicUrl(slug: string): string {
-    return `${window.location.origin}/p/${slug}`;
+    return publicDeckUrl(slug);
   }
 
   protected async copyLink(slug: string): Promise<void> {

@@ -1,0 +1,42 @@
+# Presentation Maker — web root
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Many shared hosts strip the Authorization header before PHP sees it.
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+  # API requests go to the PHP front controller.
+  RewriteRule ^api(/.*)?$ api.php [QSA,L]
+
+  # Serve real files and directories as they are (assets, install.php).
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else is an Angular route, including /p/<slug>.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain application/javascript application/json image/svg+xml
+</IfModule>
+
+# Build assets carry a content hash, so they can be cached hard.
+# index.html must not be, or upgrades will not be picked up.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 month"
+</IfModule>
+<IfModule mod_headers.c>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

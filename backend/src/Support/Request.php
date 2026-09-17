@@ -22,8 +22,24 @@ final class Request
     public function path(): string
     {
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+        $path = '/' . trim(is_string($path) ? $path : '/', '/');
 
-        return '/' . trim(is_string($path) ? $path : '/', '/');
+        // Installs that live in a subdirectory (example.com/decks/) prefix every
+        // URL with that directory; strip it so the route table stays absolute.
+        $base = $this->basePath();
+        if ($base !== '' && str_starts_with($path, $base)) {
+            $path = '/' . trim(substr($path, strlen($base)), '/');
+        }
+
+        return $path;
+    }
+
+    /** Directory the front controller is served from, '' when it is the web root. */
+    public function basePath(): string
+    {
+        $directory = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+
+        return $directory === '/' || $directory === '.' ? '' : rtrim($directory, '/');
     }
 
     public function query(string $key, ?string $default = null): ?string
