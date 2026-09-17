@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 import { Router, RouterLink } from '@angular/router';
 import { publicDeckUrl } from '../../core/api.config';
 import { apiMessage } from '../../core/api-error';
-import { ELEMENT_TYPES, ElementType } from '../../core/models/deck.model';
+import { ELEMENT_TYPES, ElementType, THEME_PALETTE } from '../../core/models/deck.model';
 import { RevealDeck } from '../../shared/reveal-deck';
 import { EditorStore } from './editor-store';
 import { Inspector } from './inspector';
@@ -47,6 +47,12 @@ export class Editor {
   protected readonly showPublish = signal(false);
   protected readonly publishing = signal(false);
   protected readonly copied = signal(false);
+
+  /** Background of the preview overlay, matching the deck's reveal.js theme. */
+  protected readonly themeBackground = computed(() => {
+    const theme = this.store.deck()?.theme;
+    return theme === undefined ? THEME_PALETTE.night.background : THEME_PALETTE[theme].background;
+  });
 
   protected readonly saveLabel = computed(() => {
     switch (this.store.saveState()) {

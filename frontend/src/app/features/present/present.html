@@ -1,4 +1,6 @@
-<div class="relative h-screen w-screen overflow-hidden bg-black">
+<!-- No background of our own once a deck is showing: reveal.js themes the
+     <body> element itself, and painting over it would hide the theme. -->
+<div class="relative h-screen w-screen overflow-hidden" [class.bg-ink-950]="loading() || error() !== null">
   @if (loading()) {
     <div class="grid h-full place-content-center text-center">
       <div class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-indigo-400"></div>
