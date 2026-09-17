@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-ink-950: #070a16;
+  --color-ink-900: #0b1020;
+  --color-ink-850: #111834;
+  --color-ink-800: #161e3d;
+  --color-ink-700: #232c52;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-950 text-slate-200 antialiased;
+    margin: 0;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-indigo-400;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-white/15;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-white/25;
+  }
+}
+
+@utility btn {
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-indigo-500 text-white hover:bg-indigo-400;
+}
+@utility btn-ghost {
+  @apply btn border border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/10;
+}
+@utility btn-danger {
+  @apply btn border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20;
+}
+@utility field {
+  @apply w-full rounded-lg border border-white/10 bg-ink-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-400 focus:outline-none;
+}
+@utility label {
+  @apply mb-1.5 block text-xs font-medium tracking-wide text-slate-400 uppercase;
+}
+@utility panel {
+  @apply rounded-xl border border-white/10 bg-ink-850;
+}
+
+/* reveal.js renders its own chrome; keep our canvas from inheriting reveal's
+   centred text defaults. */
+.reveal .slides section .pm-canvas {
+  text-align: left;
+}
+.reveal .slides section {
+  padding: 0;
+}

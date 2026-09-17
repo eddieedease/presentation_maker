@@ -1,0 +1,553 @@
+<div class="flex h-full flex-col">
+  <!-- Tabs -->
+  <div class="flex shrink-0 border-b border-white/5 p-1.5">
+    @for (name of tabs; track name) {
+      <button
+        type="button"
+        class="flex-1 rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition"
+        [class]="tab() === name ? 'bg-indigo-500/20 text-indigo-200' : 'text-slate-400 hover:text-slate-200'"
+        (click)="tab.set($any(name))"
+      >
+        {{ name }}
+      </button>
+    }
+  </div>
+
+  <div class="flex-1 space-y-5 overflow-y-auto p-4">
+    <!-- ================= ELEMENT ================= -->
+    @if (tab() === 'element') {
+      @if (element(); as el) {
+        <section>
+          <h3 class="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+            {{ el.type }}
+          </h3>
+
+          @if (isTextual()) {
+            <label class="label" for="el-text">
+              {{ el.type === 'list' ? 'Items (one per line)' : 'Content' }}
+            </label>
+            <textarea
+              id="el-text"
+              rows="4"
+              class="field font-mono text-xs"
+              [value]="el.text"
+              (focus)="beginEdit()"
+              (input)="setElement({ text: $any($event.target).value })"
+            ></textarea>
+          }
+
+          @if (el.type === 'image') {
+            <label class="label" for="el-src">Image URL</label>
+            <input
+              id="el-src"
+              class="field"
+              placeholder="https://…"
+              [value]="el.src"
+              (focus)="beginEdit()"
+              (input)="setElement({ src: $any($event.target).value })"
+            />
+            <label class="label mt-3" for="el-alt">Alt text</label>
+            <input
+              id="el-alt"
+              class="field"
+              [value]="el.alt"
+              (focus)="beginEdit()"
+              (input)="setElement({ alt: $any($event.target).value })"
+            />
+            <label class="label mt-3" for="el-fit">Fit</label>
+            <select id="el-fit" class="field" [value]="el.style.objectFit" (change)="setStyle({ objectFit: $any($event.target).value }, true)">
+              @for (fit of fits; track fit) {
+                <option [value]="fit" [selected]="fit === el.style.objectFit">{{ fit }}</option>
+              }
+            </select>
+          }
+
+          @if (el.type === 'code') {
+            <label class="label mt-3" for="el-lang">Language</label>
+            <select id="el-lang" class="field" [value]="el.language" (change)="setElement({ language: $any($event.target).value }, true)">
+              @for (language of languages; track language) {
+                <option [value]="language" [selected]="language === el.language">{{ language }}</option>
+              }
+            </select>
+          }
+
+          @if (el.type === 'shape') {
+            <label class="label" for="el-shape">Shape</label>
+            <select id="el-shape" class="field" [value]="el.shape" (change)="setElement({ shape: $any($event.target).value }, true)">
+              @for (shape of shapes; track shape) {
+                <option [value]="shape" [selected]="shape === el.shape">{{ shape }}</option>
+              }
+            </select>
+          }
+        </section>
+
+        <!-- Position & size -->
+        <section>
+          <h3 class="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Position &amp; size</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-2 rounded-lg border border-white/10 bg-ink-900 px-2 py-1.5">
+              <span class="w-4 text-xs text-slate-500">X</span>
+              <input type="number" class="w-full bg-transparent text-sm text-slate-100 focus:outline-none"
+                [value]="el.x" (focus)="beginEdit()" (input)="setElement({ x: num($any($event.target).value) })" />
+            </label>
+            <label class="flex items-center gap-2 rounded-lg border border-white/10 bg-ink-900 px-2 py-1.5">
+              <span class="w-4 text-xs text-slate-500">Y</span>
+              <input type="number" class="w-full bg-transparent text-sm text-slate-100 focus:outline-none"
+                [value]="el.y" (focus)="beginEdit()" (input)="setElement({ y: num($any($event.target).value) })" />
+            </label>
+            <label class="flex items-center gap-2 rounded-lg border border-white/10 bg-ink-900 px-2 py-1.5">
+              <span class="w-4 text-xs text-slate-500">W</span>
+              <input type="number" class="w-full bg-transparent text-sm text-slate-100 focus:outline-none"
+                [value]="el.width" (focus)="beginEdit()" (input)="setElement({ width: num($any($event.target).value, 100) })" />
+            </label>
+            <label class="flex items-center gap-2 rounded-lg border border-white/10 bg-ink-900 px-2 py-1.5">
+              <span class="w-4 text-xs text-slate-500">H</span>
+              <input type="number" class="w-full bg-transparent text-sm text-slate-100 focus:outline-none"
+                [value]="el.height" (focus)="beginEdit()" (input)="setElement({ height: num($any($event.target).value, 100) })" />
+            </label>
+          </div>
+
+          <label class="label mt-3" for="el-rotation">Rotation — {{ el.rotation }}°</label>
+          <input
+            id="el-rotation"
+            type="range"
+            min="-180"
+            max="180"
+            step="1"
+            class="w-full accent-indigo-500"
+            [value]="el.rotation"
+            (pointerdown)="beginEdit()"
+            (keydown)="beginEdit()"
+            (input)="setElement({ rotation: num($any($event.target).value) })"
+          />
+
+          <label class="label mt-3" for="el-opacity">Opacity — {{ el.style.opacity }}</label>
+          <input
+            id="el-opacity"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            class="w-full accent-indigo-500"
+            [value]="el.style.opacity"
+            (pointerdown)="beginEdit()"
+            (keydown)="beginEdit()"
+            (input)="setStyle({ opacity: num($any($event.target).value, 1) })"
+          />
+
+          <div class="mt-3 flex gap-2">
+            <button type="button" class="btn-ghost flex-1 px-2 py-1.5 text-xs" (click)="store.reorderElement(el.id, 'front')">
+              Bring front
+            </button>
+            <button type="button" class="btn-ghost flex-1 px-2 py-1.5 text-xs" (click)="store.reorderElement(el.id, 'back')">
+              Send back
+            </button>
+          </div>
+          <label class="mt-3 flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" class="accent-indigo-500" [checked]="el.locked" (change)="setElement({ locked: $any($event.target).checked }, true)" />
+            Lock position
+          </label>
+        </section>
+
+        <!-- Typography -->
+        @if (isTextual()) {
+          <section>
+            <h3 class="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Typography</h3>
+
+            <label class="label" for="el-size">Size — {{ el.style.fontSize }}px</label>
+            <input
+              id="el-size"
+              type="range"
+              min="10"
+              max="160"
+              step="1"
+              class="w-full accent-indigo-500"
+              [value]="el.style.fontSize"
+              (pointerdown)="beginEdit()"
+              (keydown)="beginEdit()"
+              (input)="setStyle({ fontSize: num($any($event.target).value, 32) })"
+            />
+
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <label class="label" for="el-weight">Weight</label>
+                <select id="el-weight" class="field" [value]="el.style.fontWeight" (change)="setStyle({ fontWeight: num($any($event.target).value, 400) }, true)">
+                  @for (weight of [300, 400, 500, 600, 700, 800]; track weight) {
+                    <option [value]="weight" [selected]="weight === el.style.fontWeight">{{ weight }}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <label class="label" for="el-font">Font</label>
+                <select id="el-font" class="field" [value]="el.style.fontFamily" (change)="setStyle({ fontFamily: $any($event.target).value }, true)">
+                  @for (font of fonts; track font) {
+                    <option [value]="font" [selected]="font === el.style.fontFamily">{{ font === '' ? 'Theme default' : font.split(',')[0] }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-3 flex gap-2">
+              <button
+                type="button"
+                class="btn-ghost flex-1 px-2 py-1.5 text-xs italic"
+                [class.!border-indigo-400]="el.style.italic"
+                (click)="setStyle({ italic: !el.style.italic }, true)"
+              >
+                Italic
+              </button>
+              <button
+                type="button"
+                class="btn-ghost flex-1 px-2 py-1.5 text-xs underline"
+                [class.!border-indigo-400]="el.style.underline"
+                (click)="setStyle({ underline: !el.style.underline }, true)"
+              >
+                Underline
+              </button>
+            </div>
+
+            <label class="label mt-3">Alignment</label>
+            <div class="flex gap-1">
+              @for (align of alignments; track align) {
+                <button
+                  type="button"
+                  class="btn-ghost flex-1 px-2 py-1.5 text-xs capitalize"
+                  [class.!border-indigo-400]="el.style.align === align"
+                  (click)="setStyle({ align }, true)"
+                >
+                  {{ align }}
+                </button>
+              }
+            </div>
+
+            <label class="label mt-3">Vertical</label>
+            <div class="flex gap-1">
+              @for (valign of verticalAlignments; track valign) {
+                <button
+                  type="button"
+                  class="btn-ghost flex-1 px-2 py-1.5 text-xs capitalize"
+                  [class.!border-indigo-400]="el.style.verticalAlign === valign"
+                  (click)="setStyle({ verticalAlign: valign }, true)"
+                >
+                  {{ valign }}
+                </button>
+              }
+            </div>
+
+            <label class="label mt-3" for="el-line">Line height — {{ el.style.lineHeight }}</label>
+            <input
+              id="el-line"
+              type="range"
+              min="0.8"
+              max="3"
+              step="0.1"
+              class="w-full accent-indigo-500"
+              [value]="el.style.lineHeight"
+              (pointerdown)="beginEdit()"
+              (keydown)="beginEdit()"
+              (input)="setStyle({ lineHeight: num($any($event.target).value, 1.3) })"
+            />
+
+            <label class="label mt-3" for="el-color">Text colour</label>
+            <div class="flex items-center gap-2">
+              <input
+                id="el-color"
+                type="color"
+                class="h-9 w-12 cursor-pointer rounded border border-white/10 bg-ink-900"
+                [value]="el.style.color"
+                (focus)="beginEdit()"
+                (input)="setStyle({ color: $any($event.target).value })"
+              />
+              <input
+                class="field font-mono text-xs"
+                [value]="el.style.color"
+                (focus)="beginEdit()"
+                (input)="setStyle({ color: $any($event.target).value })"
+              />
+            </div>
+          </section>
+        }
+
+        <!-- Box -->
+        <section>
+          <h3 class="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Box</h3>
+
+          <label class="label" for="el-bg">Fill</label>
+          <div class="flex items-center gap-2">
+            <input
+              id="el-bg"
+              type="color"
+              class="h-9 w-12 cursor-pointer rounded border border-white/10 bg-ink-900"
+              [value]="el.style.background === 'transparent' ? '#000000' : el.style.background"
+              (focus)="beginEdit()"
+              (input)="setStyle({ background: $any($event.target).value })"
+            />
+            <button type="button" class="btn-ghost px-2 py-1.5 text-xs" (click)="setStyle({ background: 'transparent' }, true)">
+              None
+            </button>
+          </div>
+
+          <div class="mt-3 grid grid-cols-2 gap-2">
+            <div>
+              <label class="label" for="el-radius">Radius</label>
+              <input
+                id="el-radius"
+                type="number"
+                min="0"
+                class="field"
+                [value]="el.style.borderRadius"
+                (focus)="beginEdit()"
+                (input)="setStyle({ borderRadius: num($any($event.target).value) })"
+              />
+            </div>
+            <div>
+              <label class="label" for="el-padding">Padding</label>
+              <input
+                id="el-padding"
+                type="number"
+                min="0"
+                class="field"
+                [value]="el.style.padding"
+                (focus)="beginEdit()"
+                (input)="setStyle({ padding: num($any($event.target).value) })"
+              />
+            </div>
+            <div>
+              <label class="label" for="el-bw">Border</label>
+              <input
+                id="el-bw"
+                type="number"
+                min="0"
+                class="field"
+                [value]="el.style.borderWidth"
+                (focus)="beginEdit()"
+                (input)="setStyle({ borderWidth: num($any($event.target).value) })"
+              />
+            </div>
+            <div>
+              <label class="label" for="el-bc">Border colour</label>
+              <input
+                id="el-bc"
+                type="color"
+                class="h-9 w-full cursor-pointer rounded border border-white/10 bg-ink-900"
+                [value]="el.style.borderColor === 'transparent' ? '#6366f1' : el.style.borderColor"
+                (focus)="beginEdit()"
+                (input)="setStyle({ borderColor: $any($event.target).value })"
+              />
+            </div>
+          </div>
+        </section>
+
+        <!-- Animation -->
+        <section>
+          <h3 class="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Build animation</h3>
+          <select class="field" [value]="el.animation.type" (change)="setAnimation(asAnimation($any($event.target).value))">
+            @for (animation of animations; track animation) {
+              <option [value]="animation" [selected]="animation === el.animation.type">{{ animation === 'none' ? 'Appear with slide' : animation }}</option>
+            }
+          </select>
+          @if (el.animation.type !== 'none') {
+            <label class="label mt-3" for="el-order">Step order</label>
+            <input
+              id="el-order"
+              type="number"
+              min="0"
+              max="60"
+              class="field"
+              [value]="el.animation.order"
+              (change)="setAnimationOrder(num($any($event.target).value))"
+            />
+            <p class="mt-1 text-xs text-slate-500">Elements with the same number reveal together.</p>
+          }
+        </section>
+
+        <div class="flex gap-2 border-t border-white/5 pt-4">
+          <button type="button" class="btn-ghost flex-1 px-2 py-1.5 text-xs" (click)="store.duplicateElement(el.id)">
+            Duplicate
+          </button>
+          <button type="button" class="btn-danger flex-1 px-2 py-1.5 text-xs" (click)="store.deleteElement(el.id)">
+            Delete
+          </button>
+        </div>
+      } @else {
+        <p class="px-1 py-8 text-center text-sm text-slate-500">
+          Select an element on the canvas to edit it.
+        </p>
+      }
+    }
+
+    <!-- ================= SLIDE ================= -->
+    @if (tab() === 'slide') {
+      @if (slide(); as current) {
+        <section>
+          <label class="label" for="slide-name">Slide name</label>
+          <input
+            id="slide-name"
+            class="field"
+            placeholder="Untitled slide"
+            [value]="current.name"
+            (focus)="beginEdit()"
+            (input)="store.updateSlide({ name: $any($event.target).value })"
+          />
+        </section>
+
+        <section>
+          <label class="label" for="slide-transition">Transition</label>
+          <select
+            id="slide-transition"
+            class="field"
+            [value]="current.transition"
+            (change)="store.updateSlide({ transition: asSlideTransition($any($event.target).value) })"
+          >
+            <option value="" [selected]="current.transition === ''">Use deck default</option>
+            @for (transition of transitions; track transition) {
+              <option [value]="transition" [selected]="transition === current.transition">{{ transition }}</option>
+            }
+          </select>
+        </section>
+
+        <section>
+          <label class="label" for="slide-bg-type">Background</label>
+          <select
+            id="slide-bg-type"
+            class="field"
+            [value]="current.background.type"
+            (change)="setBackground({ type: $any($event.target).value })"
+          >
+            <option value="color" [selected]="current.background.type === 'color'">Solid colour</option>
+            <option value="gradient" [selected]="current.background.type === 'gradient'">Gradient</option>
+            <option value="image" [selected]="current.background.type === 'image'">Image URL</option>
+          </select>
+
+          @switch (current.background.type) {
+            @case ('color') {
+              <div class="mt-2 flex items-center gap-2">
+                <input
+                  type="color"
+                  class="h-9 w-12 cursor-pointer rounded border border-white/10 bg-ink-900"
+                  [value]="current.background.value || '#101828'"
+                  (focus)="beginEdit()"
+                  (input)="setBackground({ value: $any($event.target).value }, false)"
+                />
+                <button type="button" class="btn-ghost px-2 py-1.5 text-xs" (click)="setBackground({ value: '' })">
+                  Use theme
+                </button>
+              </div>
+            }
+            @case ('gradient') {
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                @for (gradient of gradients; track gradient) {
+                  <button
+                    type="button"
+                    class="h-10 rounded-lg border transition"
+                    [class]="current.background.value === gradient ? 'border-indigo-400' : 'border-white/10'"
+                    [style.background]="gradient"
+                    (click)="setBackground({ value: gradient })"
+                  ></button>
+                }
+              </div>
+            }
+            @case ('image') {
+              <input
+                class="field mt-2"
+                placeholder="https://…"
+                [value]="current.background.value"
+                (focus)="beginEdit()"
+                (input)="setBackground({ value: $any($event.target).value }, false)"
+              />
+            }
+          }
+        </section>
+
+        <section>
+          <label class="label" for="slide-notes">Speaker notes</label>
+          <textarea
+            id="slide-notes"
+            rows="5"
+            class="field text-xs"
+            placeholder="Only you see these — press S while presenting."
+            [value]="current.notes"
+            (focus)="beginEdit()"
+            (input)="store.updateSlide({ notes: $any($event.target).value })"
+          ></textarea>
+        </section>
+      }
+    }
+
+    <!-- ================= DECK ================= -->
+    @if (tab() === 'deck') {
+      @if (deck(); as current) {
+        <section>
+          <label class="label" for="deck-theme">Theme</label>
+          <select id="deck-theme" class="field" [value]="current.theme" (change)="store.updateDeck({ theme: asTheme($any($event.target).value) })">
+            @for (theme of themes; track theme) {
+              <option [value]="theme" [selected]="theme === current.theme">{{ theme }}</option>
+            }
+          </select>
+        </section>
+
+        <section>
+          <label class="label" for="deck-transition">Default transition</label>
+          <select
+            id="deck-transition"
+            class="field"
+            [value]="current.transition"
+            (change)="store.updateDeck({ transition: asTransition($any($event.target).value) })"
+          >
+            @for (transition of transitions; track transition) {
+              <option [value]="transition" [selected]="transition === current.transition">{{ transition }}</option>
+            }
+          </select>
+
+          <label class="label mt-3" for="deck-speed">Transition speed</label>
+          <select
+            id="deck-speed"
+            class="field"
+            [value]="current.transitionSpeed"
+            (change)="store.updateDeck({ transitionSpeed: asSpeed($any($event.target).value) })"
+          >
+            @for (speed of transitionSpeeds; track speed) {
+              <option [value]="speed" [selected]="speed === current.transitionSpeed">{{ speed }}</option>
+            }
+          </select>
+        </section>
+
+        <section class="space-y-2">
+          <h3 class="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Player controls</h3>
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" class="accent-indigo-500" [checked]="current.controls"
+              (change)="store.updateDeck({ controls: $any($event.target).checked })" />
+            Show navigation arrows
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" class="accent-indigo-500" [checked]="current.progress"
+              (change)="store.updateDeck({ progress: $any($event.target).checked })" />
+            Progress bar
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" class="accent-indigo-500" [checked]="current.slideNumber"
+              (change)="store.updateDeck({ slideNumber: $any($event.target).checked })" />
+            Slide numbers
+          </label>
+          <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" class="accent-indigo-500" [checked]="current.loop"
+              (change)="store.updateDeck({ loop: $any($event.target).checked })" />
+            Loop deck
+          </label>
+        </section>
+
+        <section>
+          <label class="label" for="deck-description">Description</label>
+          <textarea
+            id="deck-description"
+            rows="3"
+            class="field text-xs"
+            placeholder="A short summary for your workspace."
+            [value]="store.description()"
+            (input)="store.setDescription($any($event.target).value)"
+          ></textarea>
+        </section>
+      }
+    }
+  </div>
+</div>

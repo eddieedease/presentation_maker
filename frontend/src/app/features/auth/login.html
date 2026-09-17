@@ -1,0 +1,118 @@
+<div class="grid min-h-screen lg:grid-cols-2">
+  <!-- Form side -->
+  <div class="flex items-center justify-center px-6 py-12">
+    <div class="w-full max-w-sm">
+      <a routerLink="/" class="mb-10 flex items-center gap-2.5 text-white">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-indigo-500 text-sm font-bold">P</span>
+        <span class="font-semibold tracking-tight">Presentation Maker</span>
+      </a>
+
+      <h1 class="text-2xl font-bold text-white">{{ heading() }}</h1>
+      <p class="mt-2 mb-8 text-sm text-slate-400">
+        {{ isRegister() ? 'Start building decks in the browser.' : 'Sign in to open your workspace.' }}
+      </p>
+
+      @if (formError(); as message) {
+        <div class="mb-5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200" role="alert">
+          {{ message }}
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4" novalidate>
+        @if (isRegister()) {
+          <div>
+            <label class="label" for="name">Name</label>
+            <input id="name" formControlName="name" class="field" autocomplete="name" placeholder="Ada Lovelace" />
+            @if (errorFor('name'); as error) {
+              <p class="mt-1 text-xs text-rose-300">{{ error }}</p>
+            } @else if (form.controls.name.touched && form.controls.name.invalid) {
+              <p class="mt-1 text-xs text-rose-300">Please enter your name.</p>
+            }
+          </div>
+        }
+
+        <div>
+          <label class="label" for="email">Email</label>
+          <input id="email" type="email" formControlName="email" class="field" autocomplete="email" placeholder="you@example.com" />
+          @if (errorFor('email'); as error) {
+            <p class="mt-1 text-xs text-rose-300">{{ error }}</p>
+          } @else if (form.controls.email.touched && form.controls.email.invalid) {
+            <p class="mt-1 text-xs text-rose-300">Enter a valid email address.</p>
+          }
+        </div>
+
+        <div>
+          <label class="label" for="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            formControlName="password"
+            class="field"
+            [attr.autocomplete]="isRegister() ? 'new-password' : 'current-password'"
+            placeholder="At least 8 characters"
+          />
+          @if (errorFor('password'); as error) {
+            <p class="mt-1 text-xs text-rose-300">{{ error }}</p>
+          } @else if (form.controls.password.touched && form.controls.password.invalid) {
+            <p class="mt-1 text-xs text-rose-300">Passwords must be at least 8 characters.</p>
+          }
+        </div>
+
+        <button type="submit" class="btn-primary w-full py-2.5" [disabled]="submitting()">
+          {{ submitting() ? 'Please wait…' : isRegister() ? 'Create account' : 'Sign in' }}
+        </button>
+      </form>
+
+      @if (providers().length) {
+        <div class="my-6 flex items-center gap-3 text-xs text-slate-500">
+          <span class="h-px flex-1 bg-white/10"></span>
+          or continue with
+          <span class="h-px flex-1 bg-white/10"></span>
+        </div>
+        <div class="grid gap-2">
+          @for (provider of providers(); track provider.id) {
+            <button
+              type="button"
+              class="btn-ghost w-full py-2.5"
+              [disabled]="!provider.configured"
+              [title]="provider.configured ? '' : 'Add ' + provider.label + ' credentials to .env to enable this'"
+              (click)="signInWith(provider.id)"
+            >
+              {{ provider.label }}
+              @if (!provider.configured) {
+                <span class="text-xs text-slate-500">(not configured)</span>
+              }
+            </button>
+          }
+        </div>
+      }
+
+      <p class="mt-8 text-center text-sm text-slate-400">
+        @if (isRegister()) {
+          Already have an account?
+          <button type="button" class="font-semibold text-indigo-400 hover:text-indigo-300" (click)="switchMode('login')">
+            Sign in
+          </button>
+        } @else {
+          New here?
+          <button type="button" class="font-semibold text-indigo-400 hover:text-indigo-300" (click)="switchMode('register')">
+            Create an account
+          </button>
+        }
+      </p>
+    </div>
+  </div>
+
+  <!-- Marketing side -->
+  <div class="relative hidden items-center justify-center overflow-hidden border-l border-white/5 bg-gradient-to-br from-indigo-950 via-ink-900 to-ink-950 px-12 lg:flex">
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_50%_at_70%_30%,rgba(99,102,241,0.25),transparent)]"></div>
+    <blockquote class="relative max-w-md">
+      <p class="text-2xl leading-snug font-semibold text-white">
+        “Design the slide, not the markup. Publish the link, not the file.”
+      </p>
+      <footer class="mt-6 text-sm text-slate-400">
+        Absolute-positioned elements, reveal.js transitions and a public URL per deck.
+      </footer>
+    </blockquote>
+  </div>
+</div>

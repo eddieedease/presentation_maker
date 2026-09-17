@@ -1,0 +1,204 @@
+<div class="flex h-screen flex-col overflow-hidden bg-ink-950">
+  <!-- Top bar -->
+  <header class="flex shrink-0 items-center gap-3 border-b border-white/5 bg-ink-900 px-4 py-2.5">
+    <button type="button" class="btn-ghost px-2.5 py-1.5 text-xs" (click)="backToWorkspace()" title="Back to workspace">
+      ← Workspace
+    </button>
+
+    <input
+      class="min-w-0 flex-1 truncate rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm font-semibold text-white hover:border-white/10 focus:border-indigo-400 focus:outline-none"
+      [value]="store.title()"
+      placeholder="Untitled presentation"
+      (input)="store.setTitle($any($event.target).value)"
+    />
+
+    <span
+      class="hidden shrink-0 text-xs sm:block"
+      [class]="store.saveState() === 'error' ? 'text-rose-300' : 'text-slate-500'"
+    >
+      {{ saveLabel() }}
+    </span>
+
+    <div class="flex shrink-0 items-center gap-1.5">
+      <button
+        type="button"
+        class="btn-ghost px-2.5 py-1.5 text-xs"
+        [disabled]="!store.canUndo()"
+        title="Undo (Ctrl+Z)"
+        (click)="store.undo()"
+      >
+        ↶
+      </button>
+      <button
+        type="button"
+        class="btn-ghost px-2.5 py-1.5 text-xs"
+        [disabled]="!store.canRedo()"
+        title="Redo (Ctrl+Shift+Z)"
+        (click)="store.redo()"
+      >
+        ↷
+      </button>
+      <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="openPreview()">Preview</button>
+      <button type="button" class="btn-primary px-3 py-1.5 text-xs" (click)="openPublish()">
+        {{ store.publication() ? 'Update link' : 'Publish' }}
+      </button>
+    </div>
+  </header>
+
+  @if (loadError(); as message) {
+    <div class="flex items-center justify-between gap-4 border-b border-rose-500/20 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
+      <span>{{ message }}</span>
+      <a routerLink="/workspace" class="font-semibold underline">Back to workspace</a>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="grid flex-1 place-content-center text-center">
+      <div class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-indigo-400"></div>
+      <p class="mt-4 text-sm text-slate-500">Loading your deck…</p>
+    </div>
+  } @else if (store.deck()) {
+    <div class="flex min-h-0 flex-1">
+      <!-- Slide rail -->
+      <aside class="flex w-52 shrink-0 flex-col border-r border-white/5 bg-ink-900">
+        <div class="flex items-center justify-between border-b border-white/5 px-3 py-2">
+          <span class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Slides</span>
+          <button type="button" class="btn-ghost px-2 py-1 text-xs" (click)="store.addSlide()" title="Add slide">+</button>
+        </div>
+
+        <ol class="flex-1 space-y-2 overflow-y-auto p-2.5">
+          @for (slide of store.slides(); track slide.id; let i = $index) {
+            <li>
+              <div
+                class="group relative cursor-pointer rounded-lg border p-1 transition"
+                [class]="store.slideIndex() === i ? 'border-indigo-400 bg-indigo-500/10' : 'border-white/10 hover:border-white/25'"
+                (click)="store.selectSlide(i)"
+              >
+                <app-slide-thumbnail [slide]="slide" [width]="168" />
+
+                <div class="mt-1 flex items-center justify-between px-1 pb-0.5">
+                  <span class="truncate text-[11px] text-slate-400">{{ i + 1 }}. {{ slide.name || 'Slide' }}</span>
+                </div>
+
+                <div class="absolute top-1.5 right-1.5 hidden gap-1 group-hover:flex">
+                  <button
+                    type="button"
+                    class="grid h-5 w-5 place-items-center rounded bg-black/70 text-[10px] text-slate-200 hover:bg-black"
+                    title="Move up"
+                    (click)="$event.stopPropagation(); store.moveSlide(i, i - 1)"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    class="grid h-5 w-5 place-items-center rounded bg-black/70 text-[10px] text-slate-200 hover:bg-black"
+                    title="Move down"
+                    (click)="$event.stopPropagation(); store.moveSlide(i, i + 1)"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    class="grid h-5 w-5 place-items-center rounded bg-black/70 text-[10px] text-slate-200 hover:bg-black"
+                    title="Duplicate"
+                    (click)="$event.stopPropagation(); store.duplicateSlide(i)"
+                  >
+                    ⧉
+                  </button>
+                  @if (store.slides().length > 1) {
+                    <button
+                      type="button"
+                      class="grid h-5 w-5 place-items-center rounded bg-black/70 text-[10px] text-rose-300 hover:bg-black"
+                      title="Delete slide"
+                      (click)="$event.stopPropagation(); store.deleteSlide(i)"
+                    >
+                      ✕
+                    </button>
+                  }
+                </div>
+              </div>
+            </li>
+          }
+        </ol>
+
+        <button type="button" class="btn-ghost m-2.5 py-2 text-xs" (click)="store.addSlide()">+ Add slide</button>
+      </aside>
+
+      <!-- Stage -->
+      <main class="flex min-w-0 flex-1 flex-col bg-ink-950">
+        <div class="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-white/5 px-4 py-2">
+          <span class="mr-1 text-xs text-slate-500">Insert</span>
+          @for (type of elementTypes; track type) {
+            <button type="button" class="btn-ghost px-2.5 py-1.5 text-xs" (click)="addElement(type)">
+              {{ labels[type] }}
+            </button>
+          }
+          <span class="ml-auto hidden text-xs text-slate-600 lg:block">
+            Drag to move · double-click to edit text · Alt disables snapping
+          </span>
+        </div>
+
+        <app-slide-canvas class="min-h-0 flex-1" />
+      </main>
+
+      <!-- Inspector -->
+      <aside class="w-72 shrink-0 border-l border-white/5 bg-ink-900">
+        <app-inspector />
+      </aside>
+    </div>
+  }
+
+  <!-- Preview overlay -->
+  @if (previewing() && store.deck(); as deck) {
+    <div class="fixed inset-0 z-50 flex flex-col bg-black">
+      <div class="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-2">
+        <span class="text-sm text-slate-300">Preview — {{ store.title() }}</span>
+        <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="previewing.set(false)">Close (Esc)</button>
+      </div>
+      <div class="min-h-0 flex-1">
+        <app-reveal-deck [deck]="deck" />
+      </div>
+    </div>
+  }
+
+  <!-- Publish dialog -->
+  @if (showPublish()) {
+    <div class="fixed inset-0 z-50 grid place-items-center bg-black/70 px-6" (click)="showPublish.set(false)">
+      <div class="panel w-full max-w-lg bg-ink-850 p-6" (click)="$event.stopPropagation()">
+        @if (publishing()) {
+          <p class="py-6 text-center text-sm text-slate-400">Publishing your deck…</p>
+        } @else if (store.publication(); as publication) {
+          <h2 class="text-lg font-semibold text-white">Your deck is live</h2>
+          <p class="mt-1 mb-5 text-sm text-slate-400">
+            Anyone with this link can view the presentation. It shows a snapshot taken at publish time.
+          </p>
+
+          <div class="flex items-center gap-2 rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5">
+            <code class="flex-1 truncate text-xs text-indigo-300">{{ publicUrl(publication.slug) }}</code>
+            <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="copyLink(publication.slug)">
+              {{ copied() ? 'Copied ✓' : 'Copy' }}
+            </button>
+          </div>
+
+          <p class="mt-3 text-xs text-slate-500">
+            {{ publication.viewCount }} {{ publication.viewCount === 1 ? 'view' : 'views' }} so far
+          </p>
+
+          <div class="mt-6 flex flex-wrap justify-end gap-2">
+            <button type="button" class="btn-danger px-3 py-1.5 text-xs" (click)="unpublish()">Revoke link</button>
+            <a [href]="publicUrl(publication.slug)" target="_blank" rel="noopener" class="btn-ghost px-3 py-1.5 text-xs">
+              Open
+            </a>
+            <button type="button" class="btn-primary px-3 py-1.5 text-xs" (click)="showPublish.set(false)">Done</button>
+          </div>
+        } @else {
+          <p class="py-6 text-center text-sm text-slate-400">This deck is not published.</p>
+          <div class="flex justify-end gap-2">
+            <button type="button" class="btn-ghost" (click)="showPublish.set(false)">Close</button>
+            <button type="button" class="btn-primary" (click)="publish()">Publish now</button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

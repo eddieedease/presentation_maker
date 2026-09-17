@@ -1,0 +1,68 @@
+<div #viewport class="relative h-full w-full min-w-0 overflow-hidden p-6" (pointerdown)="clearSelection()">
+  @if (slide(); as current) {
+    <!-- The stage is absolutely positioned so its un-scaled 1280x720 layout box
+         never widens the flex column that contains it. -->
+    <div
+      class="absolute top-1/2 left-1/2 shadow-2xl shadow-black/50 ring-1 ring-white/10"
+      [style.width.px]="canvasWidth"
+      [style.height.px]="canvasHeight"
+      [style.transform]="'translate(-50%, -50%) scale(' + scale() + ')'"
+      [style]="background(current)"
+      style="transform-origin: center"
+    >
+      <!-- Alignment guides -->
+      @if (showVerticalGuide()) {
+        <div class="pointer-events-none absolute inset-y-0 left-1/2 w-px bg-fuchsia-400/80" style="z-index: 900"></div>
+      }
+      @if (showHorizontalGuide()) {
+        <div class="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-fuchsia-400/80" style="z-index: 900"></div>
+      }
+
+      @for (element of current.elements; track element.id) {
+        <div
+          [style]="box(element)"
+          [class.cursor-move]="!element.locked"
+          [class.cursor-not-allowed]="element.locked"
+          (pointerdown)="startDrag($event, element, 'move')"
+          (dblclick)="startEditing(element)"
+        >
+          @if (editingId() === element.id) {
+            <textarea
+              #inlineEditor
+              [style]="editorStyle(element)"
+              [value]="element.text"
+              (input)="onInlineInput(element.id, $any($event.target).value)"
+              (blur)="commitInlineEdit()"
+              (keydown.escape)="commitInlineEdit()"
+              (pointerdown)="$event.stopPropagation()"
+            ></textarea>
+          } @else {
+            <app-element-view [element]="element" />
+          }
+
+          <!-- Selection chrome -->
+          @if (selectedId() === element.id) {
+            <div
+              class="pointer-events-none absolute inset-0"
+              [style.outline]="1.5 / scale() + 'px solid #818cf8'"
+              [style.outline-offset]="1 / scale() + 'px'"
+            ></div>
+
+            @if (!element.locked && editingId() !== element.id) {
+              @for (handle of handles; track handle) {
+                <div [style]="handleStyle(handle)" (pointerdown)="startDrag($event, element, handle)"></div>
+              }
+            }
+          }
+        </div>
+      }
+
+      @if (current.elements.length === 0) {
+        <div class="pointer-events-none absolute inset-0 grid place-content-center text-center">
+          <p class="text-sm text-white/40">This slide is empty</p>
+          <p class="mt-1 text-xs text-white/25">Add an element from the toolbar above</p>
+        </div>
+      }
+    </div>
+  }
+</div>

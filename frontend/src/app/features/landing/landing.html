@@ -1,0 +1,120 @@
+<div class="min-h-full bg-ink-950">
+  <!-- Nav -->
+  <header class="sticky top-0 z-30 border-b border-white/5 bg-ink-950/80 backdrop-blur">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <a routerLink="/" class="flex items-center gap-2.5 text-white">
+        <span class="grid h-8 w-8 place-items-center rounded-lg bg-indigo-500 text-sm font-bold">P</span>
+        <span class="text-base font-semibold tracking-tight">Presentation Maker</span>
+      </a>
+      <div class="flex items-center gap-3">
+        @if (isAuthenticated()) {
+          <a routerLink="/workspace" class="btn-primary">Open workspace</a>
+        } @else {
+          <a routerLink="/login" class="hidden text-sm font-medium text-slate-300 hover:text-white sm:block">Sign in</a>
+          <a routerLink="/login" [queryParams]="{ mode: 'register' }" class="btn-primary">Get started</a>
+        }
+      </div>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section class="relative overflow-hidden">
+    <div
+      class="pointer-events-none absolute inset-x-0 -top-40 h-[32rem] bg-[radial-gradient(60%_60%_at_50%_50%,rgba(99,102,241,0.25),transparent)]"
+    ></div>
+    <div class="relative mx-auto max-w-6xl px-6 py-24 text-center">
+      <p class="mb-4 inline-flex rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-300">
+        Powered by reveal.js
+      </p>
+      <h1 class="mx-auto max-w-3xl text-5xl font-bold tracking-tight text-white sm:text-6xl">
+        Build presentations in the browser. Publish them with a link.
+      </h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg text-slate-400">
+        A slide editor that feels like the desktop tools you already know, with the polish of reveal.js
+        underneath. Design your deck, hit publish, and share a URL that works anywhere.
+      </p>
+      <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
+        <a routerLink="/login" [queryParams]="{ mode: 'register' }" class="btn-primary px-6 py-3 text-base">
+          Start building — it's free
+        </a>
+        <a routerLink="/login" class="btn-ghost px-6 py-3 text-base">I already have an account</a>
+      </div>
+
+      <!-- Editor mock -->
+      <div class="mx-auto mt-16 max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-ink-850 shadow-2xl shadow-indigo-500/10">
+        <div class="flex items-center gap-2 border-b border-white/5 px-4 py-3">
+          <span class="h-2.5 w-2.5 rounded-full bg-rose-400/70"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-amber-400/70"></span>
+          <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/70"></span>
+          <span class="ml-3 text-xs text-slate-500">Q3 Roadmap — editor</span>
+        </div>
+        <div class="grid grid-cols-[6rem_1fr_7rem] gap-3 p-3 text-left sm:grid-cols-[8rem_1fr_10rem]">
+          <div class="space-y-2">
+            @for (n of [1, 2, 3, 4]; track n) {
+              <div
+                class="aspect-video rounded-md border"
+                [class]="n === 1 ? 'border-indigo-400 bg-indigo-500/20' : 'border-white/10 bg-ink-900'"
+              ></div>
+            }
+          </div>
+          <div class="grid aspect-video place-content-center gap-3 rounded-lg bg-gradient-to-br from-indigo-950 to-ink-950 p-6">
+            <div class="h-5 w-56 rounded bg-white/80"></div>
+            <div class="h-3 w-40 rounded bg-indigo-300/60"></div>
+            <div class="mt-2 h-2 w-48 rounded bg-white/20"></div>
+            <div class="h-2 w-36 rounded bg-white/20"></div>
+          </div>
+          <div class="space-y-2">
+            @for (n of [1, 2, 3, 4, 5]; track n) {
+              <div class="h-6 rounded bg-white/5"></div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="mx-auto max-w-6xl px-6 py-20">
+    <h2 class="text-center text-3xl font-bold tracking-tight text-white">Everything you need to ship a deck</h2>
+    <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      @for (feature of features; track feature.title) {
+        <article class="panel p-6 transition hover:border-indigo-400/40">
+          <div class="mb-4 grid h-10 w-10 place-items-center rounded-lg bg-indigo-500/15 text-xl">{{ feature.icon }}</div>
+          <h3 class="mb-2 font-semibold text-white">{{ feature.title }}</h3>
+          <p class="text-sm leading-relaxed text-slate-400">{{ feature.body }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="border-y border-white/5 bg-ink-900/50">
+    <div class="mx-auto max-w-6xl px-6 py-20">
+      <h2 class="text-center text-3xl font-bold tracking-tight text-white">Three steps, start to link</h2>
+      <ol class="mt-12 grid gap-6 md:grid-cols-3">
+        @for (item of steps; track item.step) {
+          <li class="panel p-6">
+            <span class="text-sm font-bold text-indigo-400">{{ item.step }}</span>
+            <h3 class="mt-3 font-semibold text-white">{{ item.title }}</h3>
+            <p class="mt-2 text-sm text-slate-400">{{ item.body }}</p>
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="mx-auto max-w-4xl px-6 py-24 text-center">
+    <h2 class="text-4xl font-bold tracking-tight text-white">Your next deck is one click away</h2>
+    <p class="mt-4 text-slate-400">Create an account and publish your first presentation in minutes.</p>
+    <a routerLink="/login" [queryParams]="{ mode: 'register' }" class="btn-primary mt-8 px-6 py-3 text-base">
+      Create your free account
+    </a>
+  </section>
+
+  <footer class="border-t border-white/5 py-8">
+    <p class="text-center text-xs text-slate-600">
+      Presentation Maker — Angular, Tailwind CSS and reveal.js, on a PHP &amp; MySQL API.
+    </p>
+  </footer>
+</div>
