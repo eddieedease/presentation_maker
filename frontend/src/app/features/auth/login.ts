@@ -30,6 +30,12 @@ export class Login {
   protected readonly fieldErrors = signal<Record<string, string>>({});
   protected readonly providers = signal<OAuthProvider[]>([]);
 
+  /** Set after a successful registration: the inbox now has the next step. */
+  protected readonly registered = signal<{ email: string; delivered: boolean } | null>(null);
+  /** Set when sign-in is refused because the address is still unconfirmed. */
+  protected readonly unverifiedEmail = signal<string | null>(null);
+  protected readonly resendState = signal<'idle' | 'sending' | 'sent'>('idle');
+
   protected readonly isRegister = computed(() => this.mode() === 'register');
   protected readonly heading = computed(() =>
     this.isRegister() ? 'Create your account' : 'Welcome back',
@@ -55,7 +61,26 @@ export class Login {
     this.mode.set(mode);
     this.formError.set(null);
     this.fieldErrors.set({});
+    this.registered.set(null);
+    this.unverifiedEmail.set(null);
+    this.resendState.set('idle');
     this.applyMode(mode);
+  }
+
+  protected async resend(): Promise<void> {
+    const email = this.unverifiedEmail() ?? this.registered()?.email;
+    if (email === undefined || email === null || this.resendState() === 'sending') {
+      return;
+    }
+
+    this.resendState.set('sending');
+    try {
+      await firstValueFrom(this.auth.resendVerification(email));
+      this.resendState.set('sent');
+    } catch (error) {
+      this.resendState.set('idle');
+      this.formError.set(apiMessage(error));
+    }
   }
 
   protected errorFor(control: string): string | undefined {
@@ -75,21 +100,31 @@ export class Login {
     this.submitting.set(true);
     this.formError.set(null);
     this.fieldErrors.set({});
+    this.unverifiedEmail.set(null);
 
     const { name, email, password } = this.form.getRawValue();
 
     try {
-      await firstValueFrom(
-        this.isRegister()
-          ? this.auth.register({ name, email, password })
-          : this.auth.login({ email, password }),
-      );
+      if (this.isRegister()) {
+        const response = await firstValueFrom(this.auth.register({ name, email, password }));
+        this.registered.set({ email, delivered: response.emailDelivered });
 
+        return;
+      }
+
+      await firstValueFrom(this.auth.login({ email, password }));
       const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/workspace';
       await this.router.navigateByUrl(returnUrl);
     } catch (error) {
-      this.formError.set(apiMessage(error));
-      this.fieldErrors.set(apiFieldErrors(error));
+      const details = apiFieldErrors(error);
+
+      // An unconfirmed address is not a form error: offer a new link instead.
+      if (details['code'] === 'email_unverified') {
+        this.unverifiedEmail.set(details['email'] ?? email);
+      } else {
+        this.formError.set(apiMessage(error));
+        this.fieldErrors.set(details);
+      }
     } finally {
       this.submitting.set(false);
     }

@@ -37,12 +37,19 @@ no CORS setup to do locally.
 
 The Docker stack seeds a demo account, so there is nothing to set up:
 
-| Email | Password |
-| ----- | -------- |
-| `demo@example.com` | `demo12345` |
+| Email | Password | Role |
+| ----- | -------- | ---- |
+| `demo@example.com` | `demo12345` | administrator |
 
-Register your own account at `/login` any time — email and password sign-in works
-out of the box and needs no OAuth credentials.
+It is an administrator, so `/admin` is reachable straight away.
+
+Registering your own account at `/login` works too, but new accounts must confirm
+their email before they can sign in. In development mail is not sent — it is
+written to the container log, so follow the link from there:
+
+```bash
+docker compose logs -f api
+```
 
 > **This account exists only in the Docker development database.** It is created
 > by `backend/database/seed-dev.sql`, which docker-compose mounts alongside the
@@ -61,14 +68,16 @@ or start from scratch with `docker compose down -v && docker compose up -d`.
 
 ---
 
-## The five screens
+## The screens
 
 | Route             | What it is                                                               |
 | ----------------- | ------------------------------------------------------------------------ |
 | `/`               | Landing page                                                             |
 | `/login`          | Sign in / register, with OAuth buttons                                   |
+| `/verify`         | Target of the confirmation link in the signup email                      |
 | `/workspace`      | Your decks — create, duplicate, publish, revoke, delete                  |
 | `/editor/:id`     | The slide editor                                                         |
+| `/admin`          | Account administration (administrators only)                             |
 | `/p/:slug`        | The publish site — a public, full-screen reveal.js player                |
 
 ---
@@ -79,6 +88,8 @@ Slides are authored on a fixed **1280 × 720** canvas; reveal.js scales that can
 to whatever screen the deck is viewed on, so what you place is what people see.
 
 - **Insert** headings, text, bullet lists, quotes, images, code blocks and shapes
+- **Upload images** from the Element inspector: drag and drop, or pick from the
+  images you have already uploaded
 - **Drag** to move, drag the handles to resize — hold **Alt** for pixel-precise placement (snapping is 8 px otherwise)
 - **Double-click** any text element to edit it in place
 - The **Element / Slide / Deck** inspector controls typography, colour, position, per-slide backgrounds and transitions, and deck-wide theme and player options
@@ -140,10 +151,10 @@ it. Note the name, username and password.
 
 **4. Open `install.php` in your browser**
 
-`https://example.com/install.php` walks through four steps:
+`https://example.com/install.php` walks through five steps:
 
-1. **Requirements** — PHP version, PDO/MySQL, mbstring, JSON, mod_rewrite and
-   whether `app/` is writable
+1. **Requirements** — PHP version, PDO/MySQL, GD, mbstring, JSON, mod_rewrite
+   and whether `app/` is writable
 2. **Database** — your credentials, tested before it continues
 3. **Site & admin** — the site URL (detected automatically) and your
    administrator account, **which the installer creates for you** so you can
@@ -151,7 +162,8 @@ it. Note the name, username and password.
    password: the credentials are whatever you type here. (The
    `demo@example.com` login from local development does not exist on a hosted
    install.)
-4. **Finish** — it offers to delete itself
+4. **Email** — how confirmation mail is sent, with an optional test message
+5. **Finish** — it offers to delete itself
 
 The installer creates the schema, writes `app/config.php` with a freshly
 generated JWT secret, and points the frontend at wherever you installed it.
@@ -175,6 +187,7 @@ public_html/
 └── app/               # blocked from the web by its own .htaccess
     ├── src/           # the PHP classes
     ├── database/      # schema.sql
+    ├── storage/       # uploaded images, created by the installer
     └── config.php     # written by the installer (0640)
 ```
 
@@ -191,11 +204,81 @@ must return **403**.
   in the control panel.
 - **To reinstall**, delete `app/config.php` and re-upload `install.php`. Your
   data is untouched — the schema uses `CREATE TABLE IF NOT EXISTS`.
-- **To upgrade**, rebuild and upload everything *except* `app/config.php`.
+- **To upgrade**, rebuild and upload everything *except* `app/config.php` and
+  `app/storage/`. If the release adds database columns, re-run the installer
+  (delete `app/config.php` first, then re-upload `install.php`): it applies the
+  pending migrations and leaves your data alone.
+- **Requires the GD extension** for image uploads. The installer checks for it.
 - If the API returns 500s, check that `mod_rewrite` is enabled and that
   `AllowOverride All` applies to your web root — some hosts disable `.htaccess`.
 - **OAuth** needs the `curl` extension. Without it, email and password sign-in
   still works.
+
+---
+
+## Images
+
+Pick an image element and choose **Upload or choose an image**. Drag files in or
+click to browse; the picker doubles as the library of everything you have
+uploaded.
+
+Uploads are JPEG, PNG, GIF or WebP up to 8 MB. Every upload is decoded and
+**re-encoded server side**, which does three things: it scales anything larger
+than 1920px on its long edge, it strips EXIF and other metadata, and it discards
+anything hidden inside the original file — a PHP payload appended to a valid JPEG
+does not survive the round trip. Files whose bytes are not actually an image are
+rejected regardless of their name or declared content type.
+
+Stored files live in `app/storage/uploads`, **outside the web root**, and are
+streamed by the API at `api/images/<token>` where the token is 16 random bytes.
+Nothing under `app/` is reachable over HTTP, so an uploaded file can never be
+executed, and sequential ids cannot be walked to discover other people's images.
+That URL is deliberately unauthenticated, because published decks have to render
+for viewers with no account.
+
+Deleting an image breaks it in any slide still using it, including published decks.
+
+---
+
+## Email confirmation
+
+New accounts get a confirmation link and cannot sign in until they follow it.
+OAuth accounts skip this, since the provider has already proved the address.
+The sign-in page offers to resend the link, rate limited to one a minute.
+
+The installer asks how mail should be sent:
+
+| Transport | When to use it |
+| --------- | -------------- |
+| **Server mail** | PHP `mail()`. Simplest, and what most shared hosts expect. |
+| **SMTP** | Your mailbox provider or a sending service. Better deliverability. |
+| **Do not send** | Writes messages to the PHP error log. Testing only — nobody can confirm their address. |
+
+SMTP is spoken directly, with STARTTLS or implicit TLS and AUTH LOGIN, so there
+is still no Composer dependency. Tick **send a test message** in the installer to
+prove the settings before anything is written: if the test fails, nothing is
+installed.
+
+To change this later, edit `MAIL_*` in `app/config.php`. If mail is broken,
+an administrator can still confirm accounts by hand from `/admin`.
+
+---
+
+## Administrators
+
+The account created by the installer is an administrator. Admins get an
+**Accounts** link in the workspace header and a dashboard at `/admin`:
+
+- Create accounts, either confirmed immediately or sent a confirmation email
+- Enable and disable accounts — a disabled account is signed out everywhere at
+  once, because role and status are read on every request rather than trusted
+  from the access token
+- Edit name, email, role, confirmation status, and set a new password
+- Resend a confirmation link
+- Delete an account with everything it owns
+
+Two things are refused on purpose: you cannot disable, demote or delete your own
+account, and you cannot remove the last active administrator.
 
 ---
 
@@ -207,6 +290,7 @@ scoped to the owner. `/api/public/*` requires nothing.
 ```
 POST   /api/auth/register            POST   /api/auth/login
 POST   /api/auth/refresh             POST   /api/auth/logout
+POST   /api/auth/verify              POST   /api/auth/verify/resend
 GET    /api/auth/me
 GET    /api/auth/oauth/providers
 GET    /api/auth/oauth/{provider}/start
@@ -216,6 +300,15 @@ GET    /api/projects                 POST   /api/projects
 GET    /api/projects/{id}            PUT    /api/projects/{id}
 DELETE /api/projects/{id}            POST   /api/projects/{id}/duplicate
 POST   /api/projects/{id}/publish    DELETE /api/projects/{id}/publish
+
+GET    /api/images                   POST   /api/images
+DELETE /api/images/{id}
+GET    /api/images/{token}           (public: embedded in published decks)
+
+GET    /api/admin/stats              GET    /api/admin/users
+POST   /api/admin/users              PUT    /api/admin/users/{id}
+DELETE /api/admin/users/{id}
+POST   /api/admin/users/{id}/resend-verification
 
 GET    /api/public/presentations/{slug}
 GET    /api/health
@@ -267,7 +360,8 @@ browsers never send to a server.
 │   │   └── install.php       # the web installer
 │   ├── database/
 │   │   ├── schema.sql        # one schema, used by Docker and the installer
-│   │   └── seed-dev.sql      # demo account; Docker only, never deployed
+│   │   ├── seed-dev.sql      # demo account; Docker only, never deployed
+│   │   └── migrate.php       # applies migrations to an existing database
 │   └── src/
 │       ├── Controllers/      # Auth, OAuth, Project, Public
 │       └── Support/          # Router, Jwt, TokenService, DeckNormalizer, …
@@ -299,6 +393,10 @@ HS256 implementation in `src/Support/Jwt.php`, so `docker compose up` is all you
   environment otherwise (Docker). The dev stack ships no config file, so the two
   never collide, and it sets `APP_INSTALLER_DISABLED=1` so the bundled installer
   cannot run against it.
+- After pulling changes that alter the schema, bring the development database up
+  to date with `docker compose exec api php database/migrate.php`.
+- Uploaded images in development land in `backend/storage/uploads`, which is
+  gitignored. The bind mount means the container writes there as `www-data`.
 - Passwords are bcrypt hashes and cannot be recovered. Locally, re-run
   `seed-dev.sql` to reset the demo account. On a hosted install, delete
   `app/config.php`, re-upload `install.php` and run it again with the same email:

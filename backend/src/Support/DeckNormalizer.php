@@ -135,7 +135,7 @@ final class DeckNormalizer
                 'fontWeight'      => (int) self::number($style['fontWeight'] ?? 400, 100, 900, 400),
                 'italic'          => self::bool($style['italic'] ?? false, false),
                 'underline'       => self::bool($style['underline'] ?? false, false),
-                'color'           => self::color($style['color'] ?? '#ffffff', '#ffffff'),
+                'color'           => self::color($style['color'] ?? '', ''),
                 'background'      => self::color($style['background'] ?? 'transparent', 'transparent'),
                 'borderColor'     => self::color($style['borderColor'] ?? 'transparent', 'transparent'),
                 'borderWidth'     => self::number($style['borderWidth'] ?? 0, 0, 40, 0),
@@ -188,6 +188,11 @@ final class DeckNormalizer
     {
         $value = is_string($value) ? trim($value) : '';
 
+        // Empty is meaningful: it means "inherit from the deck theme".
+        if ($value === '') {
+            return '';
+        }
+
         $isValid = $value === 'transparent'
             || preg_match('/^#[0-9a-f]{3,8}$/i', $value) === 1
             || preg_match('/^rgba?\(\s*[\d.\s,%]+\)$/i', $value) === 1
@@ -202,9 +207,12 @@ final class DeckNormalizer
             return false;
         }
 
-        // Only http(s) and inline images are allowed, which rules out javascript: URLs.
+        // Only http(s), inline images and our own uploads are allowed, which
+        // rules out javascript: URLs. The upload form is relative on purpose so
+        // it resolves against the app's <base href> in a subdirectory install.
         return preg_match('#^https?://#i', $value) === 1
-            || preg_match('#^data:image/(png|jpe?g|gif|webp|svg\+xml);base64,#i', $value) === 1;
+            || preg_match('#^api/images/[a-f0-9]{32}$#i', $value) === 1
+            || preg_match('#^data:image/(png|jpe?g|gif|webp);base64,#i', $value) === 1;
     }
 
     private static function id(mixed $value, string $prefix): string

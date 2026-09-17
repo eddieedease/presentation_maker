@@ -19,6 +19,9 @@
             </span>
           }
         }
+        @if (isAdmin()) {
+          <a routerLink="/admin" class="btn-ghost">Accounts</a>
+        }
         <button type="button" class="btn-ghost" (click)="signOut()">Sign out</button>
       </div>
     </div>

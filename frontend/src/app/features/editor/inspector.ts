@@ -11,12 +11,15 @@ import {
   SlideElement,
   TRANSITIONS,
   TRANSITION_SPEEDS,
+  THEME_PALETTE,
   TextAlign,
   Transition,
   TransitionSpeed,
   VerticalAlign,
 } from '../../core/models/deck.model';
+import { StoredImage } from '../../core/models/image.model';
 import { EditorStore } from './editor-store';
+import { ImagePicker } from './image-picker';
 
 type Tab = 'element' | 'slide' | 'deck';
 
@@ -30,6 +33,7 @@ const GRADIENT_PRESETS = [
 @Component({
   selector: 'app-inspector',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ImagePicker],
   templateUrl: './inspector.html',
   styles: `
     :host {
@@ -55,10 +59,17 @@ export class Inspector {
 
   protected readonly tabs: Tab[] = ['element', 'slide', 'deck'];
   protected readonly tab = signal<Tab>('element');
+  protected readonly pickerOpen = signal(false);
 
   protected readonly element = this.store.selectedElement;
   protected readonly slide = this.store.currentSlide;
   protected readonly deck = this.store.deck;
+
+  /** The colour an "inherit" element will actually render in. */
+  protected readonly themeTextColour = computed(() => {
+    const theme = this.deck()?.theme;
+    return theme === undefined ? THEME_PALETTE.night.text : THEME_PALETTE[theme].text;
+  });
 
   protected readonly isTextual = computed(() => {
     const type = this.element()?.type;
@@ -84,6 +95,22 @@ export class Inspector {
     if (id !== undefined) {
       this.store.updateElementStyle(id, patch, record);
     }
+  }
+
+  /** Applies a chosen image and sizes the box to its aspect ratio. */
+  protected onImagePicked(image: StoredImage): void {
+    const element = this.element();
+    this.pickerOpen.set(false);
+
+    if (element === null) {
+      return;
+    }
+
+    const ratio = image.height / image.width;
+    this.setElement(
+      { src: image.url, alt: image.originalName, height: Math.round(element.width * ratio) },
+      true,
+    );
   }
 
   protected setAnimation(type: Animation): void {

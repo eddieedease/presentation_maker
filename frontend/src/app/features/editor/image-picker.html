@@ -1,0 +1,93 @@
+<div class="fixed inset-0 z-50 grid place-items-center bg-black/70 px-6" (click)="closed.emit()">
+  <div class="panel flex max-h-[80vh] w-full max-w-2xl flex-col bg-ink-850 p-6" (click)="$event.stopPropagation()">
+    <div class="mb-4 flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-white">Images</h2>
+        <p class="mt-0.5 text-xs text-slate-500">
+          JPEG, PNG, GIF or WebP up to {{ formatBytes(service.limits().maxBytes) }}. Larger images are
+          scaled to {{ service.limits().maxDimension }}px on the long edge.
+        </p>
+      </div>
+      <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="closed.emit()">Close</button>
+    </div>
+
+    @if (error(); as message) {
+      <div class="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+        {{ message }}
+      </div>
+    }
+
+    <!-- Drop zone -->
+    <label
+      class="mb-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-8 text-center transition"
+      [class]="dragging() ? 'border-indigo-400 bg-indigo-500/10' : 'border-white/15 hover:border-white/30'"
+      (dragover)="$event.preventDefault(); dragging.set(true)"
+      (dragleave)="dragging.set(false)"
+      (drop)="onDrop($event)"
+    >
+      <input type="file" class="hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple (change)="onFileInput($event)" />
+      @if (uploading()) {
+        <span class="text-sm text-slate-300">Uploading… {{ progress() }}%</span>
+        <span class="mt-2 h-1.5 w-40 overflow-hidden rounded-full bg-white/10">
+          <span class="block h-full rounded-full bg-indigo-400 transition-all" [style.width.%]="progress()"></span>
+        </span>
+      } @else {
+        <span class="text-2xl">⬆</span>
+        <span class="mt-2 text-sm font-medium text-slate-200">Drop images here, or click to choose</span>
+        <span class="mt-1 text-xs text-slate-500">They are resized and stripped of metadata on upload</span>
+      }
+    </label>
+
+    <!-- Library -->
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      @if (loading()) {
+        <div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
+          @for (n of [1, 2, 3, 4]; track n) {
+            <div class="aspect-video animate-pulse rounded-lg bg-white/5"></div>
+          }
+        </div>
+      } @else if (images().length === 0) {
+        <p class="py-8 text-center text-sm text-slate-500">No images yet.</p>
+      } @else {
+        <div class="grid grid-cols-3 gap-3 sm:grid-cols-4">
+          @for (image of images(); track image.id) {
+            <div class="group relative">
+              <button
+                type="button"
+                class="block w-full overflow-hidden rounded-lg border border-white/10 transition hover:border-indigo-400"
+                (click)="picked.emit(image)"
+              >
+                <img [src]="image.url" [alt]="image.originalName" class="aspect-video w-full object-cover" loading="lazy" />
+              </button>
+              <p class="mt-1 truncate text-[10px] text-slate-500" [title]="image.originalName">
+                {{ image.width }}×{{ image.height }} · {{ formatBytes(image.bytes) }}
+              </p>
+
+              @if (confirmingDelete() === image.id) {
+                <div class="absolute inset-0 grid place-content-center gap-1 rounded-lg bg-black/85 p-2 text-center">
+                  <span class="text-[10px] text-slate-300">Delete?</span>
+                  <div class="flex gap-1">
+                    <button type="button" class="btn-danger px-2 py-1 text-[10px]" (click)="remove(image)">Yes</button>
+                    <button type="button" class="btn-ghost px-2 py-1 text-[10px]" (click)="confirmingDelete.set(null)">No</button>
+                  </div>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  class="absolute top-1.5 right-1.5 hidden h-6 w-6 place-items-center rounded bg-black/70 text-xs text-rose-300 group-hover:grid hover:bg-black"
+                  title="Delete image"
+                  (click)="confirmingDelete.set(image.id)"
+                >
+                  ✕
+                </button>
+              }
+            </div>
+          }
+        </div>
+        <p class="mt-4 text-xs text-slate-600">
+          Deleting an image breaks it in any slide that still uses it, including published decks.
+        </p>
+      }
+    </div>
+  </div>
+</div>

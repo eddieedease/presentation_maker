@@ -14,6 +14,9 @@ final class Request
 
     private ?int $userId = null;
 
+    /** @var array<string, mixed>|null */
+    private ?array $user = null;
+
     public function method(): string
     {
         return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
@@ -82,9 +85,26 @@ final class Request
         return null;
     }
 
-    public function setUserId(int $userId): void
+    /** @param array<string, mixed> $user */
+    public function setUser(array $user): void
     {
-        $this->userId = $userId;
+        $this->user = $user;
+        $this->userId = (int) $user['id'];
+    }
+
+    /** @return array<string, mixed> */
+    public function user(): array
+    {
+        if ($this->user === null) {
+            throw HttpException::unauthorized();
+        }
+
+        return $this->user;
+    }
+
+    public function isAdmin(): bool
+    {
+        return ($this->user['role'] ?? 'user') === 'admin';
     }
 
     public function userId(): int

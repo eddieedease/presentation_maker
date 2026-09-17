@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, Slide } from '../../core/models/deck.model';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, RevealTheme, Slide, THEME_PALETTE } from '../../core/models/deck.model';
 import { boxStyle } from '../../shared/deck-style';
 import { ElementView } from '../../shared/element-view';
 
@@ -12,7 +12,7 @@ import { ElementView } from '../../shared/element-view';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ElementView],
   template: `
-    <div class="relative aspect-video w-full overflow-hidden rounded-md" [style]="background()">
+    <div class="relative aspect-video w-full overflow-hidden rounded-md" [style]="background()" [style.color]="palette().text">
       <div
         class="absolute top-0 left-0 origin-top-left"
         [style.width.px]="canvasWidth"
@@ -38,6 +38,10 @@ export class SlideThumbnail {
   readonly slide = input.required<Slide>();
   /** Rendered width in px; drives the scale factor. */
   readonly width = input(168);
+  /** Deck theme, so the miniature matches what the deck will look like. */
+  readonly theme = input<RevealTheme>('night');
+
+  protected readonly palette = computed(() => THEME_PALETTE[this.theme()]);
 
   protected readonly canvasWidth = CANVAS_WIDTH;
   protected readonly canvasHeight = CANVAS_HEIGHT;
@@ -50,7 +54,7 @@ export class SlideThumbnail {
   private backgroundStyle(): Record<string, string> {
     const { type, value } = this.slide().background;
     if (value === '') {
-      return { background: '#101828' };
+      return { background: this.palette().background };
     }
     if (type !== 'image') {
       return { background: value };

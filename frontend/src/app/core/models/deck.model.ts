@@ -23,6 +23,28 @@ export const REVEAL_THEMES = [
 ] as const;
 export type RevealTheme = (typeof REVEAL_THEMES)[number];
 
+/**
+ * Approximate background and text colour of each reveal.js theme.
+ *
+ * The editor canvas is our own rendering, not reveal's, so it cannot pick these
+ * up from the theme stylesheet. This table lets the canvas preview the theme,
+ * which is what makes switching themes visibly do something while editing.
+ */
+export const THEME_PALETTE: Record<RevealTheme, { background: string; text: string }> = {
+  night: { background: '#111111', text: '#eeeeee' },
+  black: { background: '#191919', text: '#ffffff' },
+  white: { background: '#ffffff', text: '#222222' },
+  league: { background: '#2b2b2b', text: '#eeeeee' },
+  beige: { background: '#f7f3de', text: '#333333' },
+  serif: { background: '#f0f1eb', text: '#000000' },
+  simple: { background: '#ffffff', text: '#000000' },
+  solarized: { background: '#fdf6e3', text: '#657b83' },
+  moon: { background: '#002b36', text: '#93a1a1' },
+  dracula: { background: '#282a36', text: '#f8f8f2' },
+  sky: { background: '#f7fbfc', text: '#333333' },
+  blood: { background: '#222222', text: '#eeeeee' },
+};
+
 export const TRANSITIONS = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom'] as const;
 export type Transition = (typeof TRANSITIONS)[number];
 
@@ -126,7 +148,8 @@ export function defaultStyle(): ElementStyle {
     fontWeight: 400,
     italic: false,
     underline: false,
-    color: '#ffffff',
+    // Empty means "whatever the deck theme says", so switching theme is visible.
+    color: '',
     background: 'transparent',
     borderColor: 'transparent',
     borderWidth: 0,
@@ -240,7 +263,6 @@ export function createDeck(title = 'Untitled presentation'): Deck {
     slides: [
       createSlide({
         name: 'Title',
-        background: { type: 'gradient', value: 'linear-gradient(135deg, #1e1b4b, #0f172a)' },
         elements: [
           createElement('heading', {
             text: title,

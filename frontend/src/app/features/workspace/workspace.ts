@@ -20,6 +20,7 @@ export class Workspace {
 
   protected readonly projects = this.projectService.projects;
   protected readonly user = this.auth.user;
+  protected readonly isAdmin = this.auth.isAdmin;
 
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);

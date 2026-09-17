@@ -1,0 +1,228 @@
+<div class="min-h-screen bg-ink-950">
+  <header class="border-b border-white/5 bg-ink-950/80 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <a routerLink="/workspace" class="flex items-center gap-2.5 text-white">
+          <span class="grid h-8 w-8 place-items-center rounded-lg bg-indigo-500 text-sm font-bold">P</span>
+          <span class="font-semibold tracking-tight">Presentation Maker</span>
+        </a>
+        <span class="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-amber-300 uppercase">
+          Admin
+        </span>
+      </div>
+      <a routerLink="/workspace" class="btn-ghost">Back to workspace</a>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-6 py-10">
+    <div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Accounts</h1>
+        <p class="mt-1 text-sm text-slate-400">Create accounts, enable or disable them, and change their details.</p>
+      </div>
+      <button type="button" class="btn-primary" (click)="openCreate()">+ New account</button>
+    </div>
+
+    @if (stats(); as summary) {
+      <div class="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        @for (tile of [
+          { label: 'Accounts', value: summary.users, hint: summary.admins + ' admin' },
+          { label: 'Disabled', value: summary.disabled, hint: summary.unverified + ' unconfirmed' },
+          { label: 'Decks', value: summary.projects, hint: summary.published + ' published' },
+          { label: 'Deck views', value: summary.views, hint: summary.images + ' images' }
+        ]; track tile.label) {
+          <div class="panel px-4 py-3">
+            <p class="text-xs tracking-wide text-slate-500 uppercase">{{ tile.label }}</p>
+            <p class="mt-1 text-2xl font-bold text-white">{{ tile.value }}</p>
+            <p class="text-xs text-slate-500">{{ tile.hint }}</p>
+          </div>
+        }
+      </div>
+    }
+
+    @if (error(); as message) {
+      <div class="mb-6 flex items-center justify-between gap-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <span>{{ message }}</span>
+        <button type="button" class="font-semibold underline" (click)="refresh()">Retry</button>
+      </div>
+    }
+
+    <div class="mb-4">
+      <input
+        class="field max-w-xs"
+        placeholder="Search by name or email…"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+        (keydown.enter)="refresh()"
+      />
+    </div>
+
+    @if (loading()) {
+      <div class="panel h-64 animate-pulse bg-ink-850/60"></div>
+    } @else {
+      <div class="panel overflow-x-auto">
+        <table class="w-full min-w-[46rem] text-left text-sm">
+          <thead class="border-b border-white/5 text-xs tracking-wide text-slate-500 uppercase">
+            <tr>
+              <th class="px-4 py-3 font-medium">Account</th>
+              <th class="px-4 py-3 font-medium">Role</th>
+              <th class="px-4 py-3 font-medium">Status</th>
+              <th class="px-4 py-3 font-medium">Decks</th>
+              <th class="px-4 py-3 font-medium">Joined</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of users(); track user.id) {
+              <tr class="border-b border-white/5 last:border-0 align-top">
+                @if (editingId() === user.id && draft(); as edit) {
+                  <!-- Editing -->
+                  <td class="px-4 py-3">
+                    <input class="field mb-2" [value]="edit.name" (input)="patchDraft({ name: $any($event.target).value })" />
+                    <input class="field" [value]="edit.email" (input)="patchDraft({ email: $any($event.target).value })" />
+                    <input
+                      type="password"
+                      class="field mt-2"
+                      placeholder="New password (optional)"
+                      [value]="newPassword()"
+                      (input)="newPassword.set($any($event.target).value)"
+                    />
+                  </td>
+                  <td class="px-4 py-3">
+                    <select class="field" [value]="edit.role" (change)="patchDraft({ role: $any($event.target).value })">
+                      <option value="user" [selected]="edit.role === 'user'">user</option>
+                      <option value="admin" [selected]="edit.role === 'admin'">admin</option>
+                    </select>
+                  </td>
+                  <td class="px-4 py-3">
+                    <label class="mb-1.5 flex items-center gap-2 text-xs text-slate-300">
+                      <input type="checkbox" class="accent-indigo-500" [checked]="edit.isActive" (change)="patchDraft({ isActive: $any($event.target).checked })" />
+                      Enabled
+                    </label>
+                    <label class="flex items-center gap-2 text-xs text-slate-300">
+                      <input type="checkbox" class="accent-indigo-500" [checked]="edit.emailVerified" (change)="patchDraft({ emailVerified: $any($event.target).checked })" />
+                      Email confirmed
+                    </label>
+                  </td>
+                  <td class="px-4 py-3 text-slate-500">{{ user.projectCount }}</td>
+                  <td class="px-4 py-3 text-slate-500">{{ formatDate(user.createdAt) }}</td>
+                  <td class="px-4 py-3">
+                    <div class="flex justify-end gap-2">
+                      <button type="button" class="btn-primary px-3 py-1.5 text-xs" [disabled]="busyId() === user.id" (click)="saveEdit()">Save</button>
+                      <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="cancelEdit()">Cancel</button>
+                    </div>
+                  </td>
+                } @else {
+                  <!-- Reading -->
+                  <td class="px-4 py-3">
+                    <p class="font-medium text-white">
+                      {{ user.name }}
+                      @if (user.id === currentUser()?.id) {
+                        <span class="ml-1 text-[10px] text-slate-500">(you)</span>
+                      }
+                    </p>
+                    <p class="text-xs text-slate-500">{{ user.email }}</p>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span
+                      class="rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+                      [class]="user.role === 'admin' ? 'bg-amber-500/15 text-amber-300' : 'bg-white/5 text-slate-400'"
+                    >
+                      {{ user.role }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex flex-col gap-1">
+                      <span class="text-xs" [class]="user.isActive ? 'text-emerald-300' : 'text-rose-300'">
+                        {{ user.isActive ? 'Enabled' : 'Disabled' }}
+                      </span>
+                      @if (!user.emailVerified) {
+                        <button type="button" class="text-left text-[11px] text-amber-300 underline" [disabled]="busyId() === user.id" (click)="resend(user)">
+                          Unconfirmed — resend
+                        </button>
+                      }
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-slate-400">
+                    {{ user.projectCount }}
+                    @if (user.publishedCount > 0) {
+                      <span class="text-xs text-slate-600">({{ user.publishedCount }} live)</span>
+                    }
+                  </td>
+                  <td class="px-4 py-3 text-slate-500">{{ formatDate(user.createdAt) }}</td>
+                  <td class="px-4 py-3">
+                    @if (confirmingDelete() === user.id) {
+                      <div class="flex items-center justify-end gap-2">
+                        <span class="text-xs text-slate-400">Delete with all decks?</span>
+                        <button type="button" class="btn-danger px-3 py-1.5 text-xs" (click)="remove(user)">Delete</button>
+                        <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="confirmingDelete.set(null)">Cancel</button>
+                      </div>
+                    } @else {
+                      <div class="flex flex-wrap justify-end gap-2">
+                        <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="startEdit(user)">Edit</button>
+                        <button type="button" class="btn-ghost px-3 py-1.5 text-xs" [disabled]="busyId() === user.id || user.id === currentUser()?.id" (click)="toggleActive(user)">
+                          {{ user.isActive ? 'Disable' : 'Enable' }}
+                        </button>
+                        <button type="button" class="px-2 py-1.5 text-xs text-slate-500 hover:text-rose-300 disabled:opacity-40" [disabled]="user.id === currentUser()?.id" (click)="confirmingDelete.set(user.id)">
+                          Delete
+                        </button>
+                      </div>
+                    }
+                  </td>
+                }
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">No accounts match that search.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </main>
+
+  <!-- New account dialog -->
+  @if (creating()) {
+    <div class="fixed inset-0 z-50 grid place-items-center bg-black/70 px-6" (click)="creating.set(false)">
+      <div class="panel w-full max-w-md bg-ink-850 p-6" (click)="$event.stopPropagation()">
+        <h2 class="text-lg font-semibold text-white">New account</h2>
+        <p class="mt-1 mb-5 text-sm text-slate-400">The account is ready to use straight away.</p>
+
+        <form (ngSubmit)="create()">
+          <label class="label" for="new-name">Name</label>
+          <input id="new-name" name="name" class="field" [ngModel]="newUser().name" (ngModelChange)="patchNew({ name: $event })" />
+
+          <label class="label mt-3" for="new-email">Email</label>
+          <input id="new-email" name="email" type="email" class="field" [ngModel]="newUser().email" (ngModelChange)="patchNew({ email: $event })" />
+
+          <label class="label mt-3" for="new-password">Password</label>
+          <input id="new-password" name="password" type="password" class="field" placeholder="At least 8 characters" [ngModel]="newUser().password" (ngModelChange)="patchNew({ password: $event })" />
+
+          <label class="label mt-3" for="new-role">Role</label>
+          <select id="new-role" name="role" class="field" [ngModel]="newUser().role" (ngModelChange)="patchNew({ role: $event })">
+            <option value="user">user</option>
+            <option value="admin">admin</option>
+          </select>
+
+          <label class="mt-4 flex items-start gap-2 text-sm text-slate-300">
+            <input type="checkbox" class="mt-1 accent-indigo-500" [ngModel]="newUser().sendConfirmation" [ngModelOptions]="{ standalone: true }" (ngModelChange)="patchNew({ sendConfirmation: $event })" />
+            <span>
+              Ask them to confirm their email first
+              <span class="block text-xs text-slate-500">Leave off to mark the address confirmed yourself.</span>
+            </span>
+          </label>
+
+          <div class="mt-6 flex justify-end gap-2">
+            <button type="button" class="btn-ghost" (click)="creating.set(false)">Cancel</button>
+            <button type="submit" class="btn-primary" [disabled]="saving()">{{ saving() ? 'Creating…' : 'Create account' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  @if (toast(); as message) {
+    <div class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-white/10 bg-ink-800 px-4 py-2.5 text-sm text-slate-200 shadow-xl">
+      {{ message }}
+    </div>
+  }
+</div>

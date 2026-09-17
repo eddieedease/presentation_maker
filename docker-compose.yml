@@ -43,6 +43,16 @@ services:
       REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-1209600}
       APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:4200}
       APP_INSTALLER_DISABLED: "1"
+      # Development writes mail to the container log instead of sending it:
+      #   docker compose logs -f api
+      MAIL_TRANSPORT: ${MAIL_TRANSPORT:-log}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@presmaker.test}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Presentation Maker}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

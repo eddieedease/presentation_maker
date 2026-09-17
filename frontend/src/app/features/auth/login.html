@@ -7,6 +7,34 @@
         <span class="font-semibold tracking-tight">Presentation Maker</span>
       </a>
 
+      @if (registered(); as done) {
+        <div class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
+          <h1 class="text-lg font-semibold text-white">Check your inbox</h1>
+          <p class="mt-2 text-sm text-emerald-100/80">
+            We sent a confirmation link to <strong>{{ done.email }}</strong>. Open it to finish setting up
+            your account — you can sign in once the address is confirmed.
+          </p>
+          @if (!done.delivered) {
+            <p class="mt-3 rounded-lg bg-amber-500/15 px-3 py-2 text-xs text-amber-200">
+              The server could not send the message. Ask an administrator to confirm your account.
+            </p>
+          }
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              class="btn-ghost px-3 py-1.5 text-xs"
+              [disabled]="resendState() !== 'idle'"
+              (click)="resend()"
+            >
+              {{ resendState() === 'sent' ? 'Link sent ✓' : resendState() === 'sending' ? 'Sending…' : 'Resend the link' }}
+            </button>
+            <button type="button" class="text-xs font-semibold text-indigo-300 hover:text-indigo-200" (click)="switchMode('login')">
+              Back to sign in
+            </button>
+          </div>
+        </div>
+      } @else {
+
       <h1 class="text-2xl font-bold text-white">{{ heading() }}</h1>
       <p class="mt-2 mb-8 text-sm text-slate-400">
         {{ isRegister() ? 'Start building decks in the browser.' : 'Sign in to open your workspace.' }}
@@ -15,6 +43,20 @@
       @if (formError(); as message) {
         <div class="mb-5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200" role="alert">
           {{ message }}
+        </div>
+      }
+
+      @if (unverifiedEmail(); as pending) {
+        <div class="mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100" role="alert">
+          <p>Confirm <strong>{{ pending }}</strong> before signing in. Check your inbox for the link.</p>
+          <button
+            type="button"
+            class="mt-2 text-xs font-semibold text-amber-200 underline disabled:no-underline disabled:opacity-60"
+            [disabled]="resendState() !== 'idle'"
+            (click)="resend()"
+          >
+            {{ resendState() === 'sent' ? 'A new link is on its way ✓' : resendState() === 'sending' ? 'Sending…' : 'Send a new link' }}
+          </button>
         </div>
       }
 
@@ -100,6 +142,7 @@
           </button>
         }
       </p>
+      }
     </div>
   </div>
 

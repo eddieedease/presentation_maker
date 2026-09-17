@@ -9,7 +9,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, Slide, SlideElement } from '../../core/models/deck.model';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, Slide, SlideElement, THEME_PALETTE } from '../../core/models/deck.model';
 import { boxStyle, contentStyle } from '../../shared/deck-style';
 import { ElementView } from '../../shared/element-view';
 import { EditorStore } from './editor-store';
@@ -59,6 +59,12 @@ export class SlideCanvas implements AfterViewInit {
   protected readonly slide = this.store.currentSlide;
   protected readonly selectedId = this.store.selectedElementId;
 
+  /** Colours of the deck's reveal.js theme, so the canvas looks like the result. */
+  protected readonly palette = computed(() => {
+    const theme = this.store.deck()?.theme;
+    return theme === undefined ? THEME_PALETTE.night : THEME_PALETTE[theme];
+  });
+
   /** Handles must stay a constant size on screen regardless of canvas zoom. */
   protected readonly handleSize = computed(() => 10 / this.scale());
 
@@ -94,8 +100,8 @@ export class SlideCanvas implements AfterViewInit {
   protected background(slide: Slide): Record<string, string> {
     const { type, value } = slide.background;
     if (value === '') {
-      // Fall back to a neutral stage so light themes remain readable while editing.
-      return { background: '#101828' };
+      // No slide background means the deck theme's own background shows through.
+      return { background: this.palette().background };
     }
 
     if (type !== 'image') {

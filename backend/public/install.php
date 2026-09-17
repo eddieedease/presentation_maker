@@ -41,6 +41,19 @@ function appDirectory(): ?string
 $appDir = appDirectory();
 $configPath = $appDir === null ? null : $appDir . '/config.php';
 $schemaPath = $appDir === null ? null : $appDir . '/database/schema.sql';
+$storagePath = $appDir === null ? null : $appDir . '/storage/uploads';
+
+if ($appDir !== null) {
+    // Reuse the application's own Migrator and Mailer rather than duplicating them.
+    spl_autoload_register(static function (string $class) use ($appDir): void {
+        if (str_starts_with($class, 'App\\')) {
+            $file = $appDir . '/src/' . str_replace('\\', '/', substr($class, 4)) . '.php';
+            if (is_file($file)) {
+                require $file;
+            }
+        }
+    });
+}
 
 // ---------------------------------------------------------------------------
 // Guards
@@ -189,6 +202,14 @@ function requirements(?string $appDir): array
                 : 'chmod the app/ directory to 755 (or 775) so config.php can be written',
         ],
         [
+            'label'    => 'GD extension',
+            'ok'       => extension_loaded('gd'),
+            'required' => true,
+            'detail'   => extension_loaded('gd')
+                ? 'Used to resize uploaded images and strip their metadata'
+                : 'Needed for image uploads. Ask your host to enable php-gd',
+        ],
+        [
             'label'    => 'cURL extension',
             'ok'       => extension_loaded('curl'),
             'required' => false,
@@ -269,8 +290,7 @@ if ($step === 'database' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($step === 'site' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     checkCsrf();
 
-    $db = $_SESSION['installer_db'] ?? null;
-    if (!is_array($db)) {
+    if (!isset($_SESSION['installer_db'])) {
         header('Location: ?step=database');
         exit;
     }
@@ -297,82 +317,183 @@ if ($step === 'site' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($errors === []) {
+        // Nothing is written yet: the email step performs the install, so a
+        // failure there does not leave a half-configured site behind.
+        $_SESSION['installer_site'] = [
+            'site_url'             => $siteUrl,
+            'admin_name'           => $adminName,
+            'admin_email'          => $adminEmail,
+            'admin_password'       => $adminPassword,
+            'google_client_id'     => post('google_client_id'),
+            'google_client_secret' => post('google_client_secret'),
+            'github_client_id'     => post('github_client_id'),
+            'github_client_secret' => post('github_client_secret'),
+        ];
+
+        header('Location: ?step=mail');
+        exit;
+    }
+}
+
+// ---- Step 4: email delivery, then the actual install -----------------------
+
+if ($step === 'mail' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    checkCsrf();
+
+    $db = $_SESSION['installer_db'] ?? null;
+    $site = $_SESSION['installer_site'] ?? null;
+    if (!is_array($db) || !is_array($site)) {
+        header('Location: ?step=database');
+        exit;
+    }
+
+    $transport = post('mail_transport', 'mail');
+    if (!in_array($transport, ['smtp', 'mail', 'log'], true)) {
+        $transport = 'mail';
+    }
+
+    $mail = [
+        'MAIL_TRANSPORT'    => $transport,
+        'MAIL_HOST'         => post('mail_host'),
+        'MAIL_PORT'         => post('mail_port', '587'),
+        'MAIL_ENCRYPTION'   => post('mail_encryption', 'tls'),
+        'MAIL_USERNAME'     => post('mail_username'),
+        'MAIL_PASSWORD'     => (string) ($_POST['mail_password'] ?? ''),
+        'MAIL_FROM_ADDRESS' => post('mail_from_address') !== '' ? post('mail_from_address') : $site['admin_email'],
+        'MAIL_FROM_NAME'    => post('mail_from_name') !== '' ? post('mail_from_name') : 'Presentation Maker',
+    ];
+
+    if (filter_var($mail['MAIL_FROM_ADDRESS'], FILTER_VALIDATE_EMAIL) === false) {
+        $errors[] = 'The "from" address is not a valid email address.';
+    }
+    if ($transport === 'smtp' && $mail['MAIL_HOST'] === '') {
+        $errors[] = 'Enter your SMTP server hostname.';
+    }
+
+    // Optional: prove the settings work before committing to them.
+    if ($errors === [] && post('send_test') === '1') {
+        foreach ($mail as $key => $value) {
+            putenv($key . '=' . $value);
+        }
+        putenv('APP_FRONTEND_URL=' . $site['site_url']);
+
         try {
-            $pdo = connect($db);
+            App\Support\Mailer::send(
+                $site['admin_email'],
+                $site['admin_name'],
+                'Presentation Maker test message',
+                '<p>If you are reading this, your Presentation Maker mail settings work.</p>',
+                "If you are reading this, your Presentation Maker mail settings work.\n",
+            );
+        } catch (Throwable $e) {
+            $errors[] = 'Test message failed: ' . $e->getMessage();
+        }
+    }
 
-            // 1. Schema
-            $schema = is_string($schemaPath) && is_file($schemaPath) ? file_get_contents($schemaPath) : false;
-            if ($schema === false) {
-                throw new RuntimeException('Could not read app/database/schema.sql from the bundle.');
-            }
-            foreach (splitSqlStatements($schema) as $statement) {
-                $pdo->exec($statement);
-            }
+    if ($errors === []) {
+        try {
+            performInstall($db, $site, $mail, (string) $configPath, (string) $schemaPath, (string) $storagePath);
 
-            // 2. Admin account — created as part of the install so you can sign
-            //    in the moment the installer finishes.
-            $existing = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-            $existing->execute([$adminEmail]);
-            $hash = password_hash($adminPassword, PASSWORD_DEFAULT);
-
-            if ($existing->fetch() === false) {
-                $pdo->prepare('INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)')
-                    ->execute([$adminEmail, $adminName, $hash]);
-            } else {
-                $pdo->prepare('UPDATE users SET name = ?, password_hash = ? WHERE email = ?')
-                    ->execute([$adminName, $hash, $adminEmail]);
-            }
-
-            // 3. Configuration file
-            $settings = [
-                'DB_HOST'              => $db['host'],
-                'DB_PORT'              => $db['port'],
-                'DB_NAME'              => $db['name'],
-                'DB_USER'              => $db['user'],
-                'DB_PASSWORD'          => $db['password'],
-                'JWT_SECRET'           => bin2hex(random_bytes(32)),
-                'JWT_ISSUER'           => 'presmaker-api',
-                'ACCESS_TOKEN_TTL'     => '900',
-                'REFRESH_TOKEN_TTL'    => '1209600',
-                'APP_FRONTEND_URL'     => $siteUrl,
-                'CORS_ALLOWED_ORIGINS' => $siteUrl,
-                'GOOGLE_CLIENT_ID'     => post('google_client_id'),
-                'GOOGLE_CLIENT_SECRET' => post('google_client_secret'),
-                'GOOGLE_REDIRECT_URI'  => $siteUrl . '/api/auth/oauth/google/callback',
-                'GITHUB_CLIENT_ID'     => post('github_client_id'),
-                'GITHUB_CLIENT_SECRET' => post('github_client_secret'),
-                'GITHUB_REDIRECT_URI'  => $siteUrl . '/api/auth/oauth/github/callback',
-            ];
-
-            $php = "<?php\n\n// Generated by the Presentation Maker installer on " . gmdate('Y-m-d H:i') . " UTC.\n"
-                . "// Safe to edit by hand. Keep it out of public source control.\n\nreturn "
-                . var_export($settings, true) . ";\n";
-
-            if (file_put_contents($configPath, $php) === false) {
-                throw new RuntimeException('Could not write ' . $configPath . '. Check the directory permissions.');
-            }
-            @chmod($configPath, 0640);
-
-            // 4. Point the built frontend at this directory, so the same bundle
-            //    works at the web root and in a subfolder.
-            $indexPath = __DIR__ . '/index.html';
-            $base = baseDirectory() . '/';
-            if (is_file($indexPath) && is_writable($indexPath)) {
-                $html = (string) file_get_contents($indexPath);
-                $patched = preg_replace('#<base href="[^"]*">#', '<base href="' . e($base) . '">', $html, 1);
-                if (is_string($patched)) {
-                    file_put_contents($indexPath, $patched);
-                }
-            }
-
-            $_SESSION['installer_site_url'] = $siteUrl;
-            $_SESSION['installer_admin_email'] = $adminEmail;
-            unset($_SESSION['installer_db']);
+            $_SESSION['installer_site_url'] = $site['site_url'];
+            $_SESSION['installer_admin_email'] = $site['admin_email'];
+            $_SESSION['installer_mail_transport'] = $transport;
+            unset($_SESSION['installer_db'], $_SESSION['installer_site']);
 
             header('Location: ?step=done');
             exit;
         } catch (Throwable $e) {
             $errors[] = $e->getMessage();
+        }
+    }
+}
+
+/**
+ * Creates the schema, the administrator and the configuration file.
+ *
+ * @param array<string, mixed>  $db
+ * @param array<string, mixed>  $site
+ * @param array<string, string> $mail
+ */
+function performInstall(array $db, array $site, array $mail, string $configPath, string $schemaPath, string $storagePath): void
+{
+    $pdo = connect($db);
+
+    // 1. Schema, then migrations so an upgrade over an older install also works.
+    $schema = is_file($schemaPath) ? file_get_contents($schemaPath) : false;
+    if ($schema === false) {
+        throw new RuntimeException('Could not read app/database/schema.sql from the bundle.');
+    }
+    foreach (splitSqlStatements($schema) as $statement) {
+        $pdo->exec($statement);
+    }
+    App\Support\Migrator::run($pdo);
+
+    // 2. The administrator, created here so it can sign in immediately. An
+    //    address the installer's operator typed needs no email confirmation.
+    $existing = $pdo->prepare('SELECT id FROM users WHERE email = ?');
+    $existing->execute([$site['admin_email']]);
+    $found = $existing->fetch();
+    $hash = password_hash($site['admin_password'], PASSWORD_DEFAULT);
+
+    if ($found === false) {
+        $pdo->prepare(
+            "INSERT INTO users (email, name, password_hash, role, is_active, email_verified_at)
+             VALUES (?, ?, ?, 'admin', 1, NOW())"
+        )->execute([$site['admin_email'], $site['admin_name'], $hash]);
+    } else {
+        $pdo->prepare(
+            "UPDATE users SET name = ?, password_hash = ?, role = 'admin', is_active = 1,
+                    email_verified_at = COALESCE(email_verified_at, NOW())
+             WHERE id = ?"
+        )->execute([$site['admin_name'], $hash, (int) $found['id']]);
+    }
+
+    // 3. Somewhere to put uploaded images, outside the web root.
+    if (!is_dir($storagePath) && !@mkdir($storagePath, 0755, true) && !is_dir($storagePath)) {
+        throw new RuntimeException('Could not create ' . $storagePath . '. Check the permissions on app/.');
+    }
+
+    // 4. Configuration.
+    $settings = [
+        'DB_HOST'              => $db['host'],
+        'DB_PORT'              => $db['port'],
+        'DB_NAME'              => $db['name'],
+        'DB_USER'              => $db['user'],
+        'DB_PASSWORD'          => $db['password'],
+        'JWT_SECRET'           => bin2hex(random_bytes(32)),
+        'JWT_ISSUER'           => 'presmaker-api',
+        'ACCESS_TOKEN_TTL'     => '900',
+        'REFRESH_TOKEN_TTL'    => '1209600',
+        'APP_FRONTEND_URL'     => $site['site_url'],
+        'CORS_ALLOWED_ORIGINS' => $site['site_url'],
+        'IMAGE_MAX_BYTES'      => (string) (8 * 1024 * 1024),
+        'IMAGE_MAX_DIMENSION'  => '1920',
+        'GOOGLE_CLIENT_ID'     => $site['google_client_id'],
+        'GOOGLE_CLIENT_SECRET' => $site['google_client_secret'],
+        'GOOGLE_REDIRECT_URI'  => $site['site_url'] . '/api/auth/oauth/google/callback',
+        'GITHUB_CLIENT_ID'     => $site['github_client_id'],
+        'GITHUB_CLIENT_SECRET' => $site['github_client_secret'],
+        'GITHUB_REDIRECT_URI'  => $site['site_url'] . '/api/auth/oauth/github/callback',
+    ] + $mail;
+
+    $php = "<?php\n\n// Generated by the Presentation Maker installer on " . gmdate('Y-m-d H:i') . " UTC.\n"
+        . "// Safe to edit by hand. Keep it out of public source control.\n\nreturn "
+        . var_export($settings, true) . ";\n";
+
+    if (file_put_contents($configPath, $php) === false) {
+        throw new RuntimeException('Could not write ' . $configPath . '. Check the directory permissions.');
+    }
+    @chmod($configPath, 0640);
+
+    // 5. Point the built frontend at this directory, so the same bundle works
+    //    at the web root and in a subfolder.
+    $indexPath = __DIR__ . '/index.html';
+    $base = baseDirectory() . '/';
+    if (is_file($indexPath) && is_writable($indexPath)) {
+        $html = (string) file_get_contents($indexPath);
+        $patched = preg_replace('#<base href="[^"]*">#', '<base href="' . e($base) . '">', $html, 1);
+        if (is_string($patched)) {
+            file_put_contents($indexPath, $patched);
         }
     }
 }
@@ -400,7 +521,13 @@ if ($step === 'done' && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action
 
 function render(string $title, string $body, string $stepLabel = ''): void
 {
-    $steps = ['requirements' => 'Requirements', 'database' => 'Database', 'site' => 'Site &amp; admin', 'done' => 'Finish'];
+    $steps = [
+        'requirements' => 'Requirements',
+        'database'     => 'Database',
+        'site'         => 'Site &amp; admin',
+        'mail'         => 'Email',
+        'done'         => 'Finish',
+    ];
     $current = $stepLabel;
     ?><!doctype html>
 <html lang="en">
@@ -447,8 +574,10 @@ function render(string $title, string $body, string $stepLabel = ''): void
   code { background:#0b1020; padding:2px 6px; border-radius:5px; font-size:13px; color:#c7d2fe; }
   .hint { color:#64748b; font-size:12.5px; margin-top:6px; }
   details { margin-top:22px; } summary { cursor:pointer; color:#a5b4fc; font-size:14px; }
-  .cb { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:14px; color:#cbd5e1; }
-  .cb input { accent-color:#6366f1; }
+  .cb { display:flex; align-items:flex-start; gap:9px; margin-top:12px; font-size:14px; color:#cbd5e1; line-height:1.5; }
+  .cb input { accent-color:#6366f1; margin-top:3px; flex:none; }
+  .sel { width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.12);
+         background:#0b1020; color:#f1f5f9; font-size:14px; font-family:inherit; }
 </style>
 </head>
 <body>
@@ -544,6 +673,83 @@ switch ($step) {
             <input id="github_client_secret" type="password" name="github_client_secret" value="<?= e(post('github_client_secret')) ?>">
           </details>
 
+          <button class="btn" type="submit">Continue to email</button>
+        </form>
+        <?php
+        break;
+
+    case 'mail':
+        if (!isset($_SESSION['installer_site'])) {
+            header('Location: ?step=site');
+            exit;
+        }
+        $adminEmail = (string) ($_SESSION['installer_site']['admin_email'] ?? '');
+        $chosen = post('mail_transport', 'mail');
+        ?>
+        <h1>Email delivery</h1>
+        <p class="lead">New accounts confirm their address by email, so the site needs a way to send mail.</p>
+        <?= errorBlock($errors) ?>
+        <form method="post">
+          <input type="hidden" name="_token" value="<?= e($token) ?>">
+
+          <label>How should mail be sent?</label>
+          <label class="cb">
+            <input type="radio" name="mail_transport" value="mail" <?= $chosen === 'mail' ? 'checked' : '' ?>>
+            <span><strong>The server's own mail</strong> — PHP <code>mail()</code>. Simplest, and what most shared hosts prefer.</span>
+          </label>
+          <label class="cb">
+            <input type="radio" name="mail_transport" value="smtp" <?= $chosen === 'smtp' ? 'checked' : '' ?>>
+            <span><strong>SMTP</strong> — your mailbox provider or a sending service. More reliable delivery.</span>
+          </label>
+          <label class="cb">
+            <input type="radio" name="mail_transport" value="log" <?= $chosen === 'log' ? 'checked' : '' ?>>
+            <span><strong>Do not send</strong> — write messages to the PHP error log. Testing only: nobody can confirm their address.</span>
+          </label>
+
+          <h2>Sender</h2>
+          <div class="row">
+            <div>
+              <label for="mail_from_address">From address</label>
+              <input id="mail_from_address" type="email" name="mail_from_address" value="<?= e(post('mail_from_address', $adminEmail)) ?>">
+            </div>
+            <div>
+              <label for="mail_from_name">From name</label>
+              <input id="mail_from_name" type="text" name="mail_from_name" value="<?= e(post('mail_from_name', 'Presentation Maker')) ?>">
+            </div>
+          </div>
+          <p class="hint">Use an address on your own domain, or mail may be rejected as spoofed.</p>
+
+          <details <?= $chosen === 'smtp' ? 'open' : '' ?>>
+            <summary>SMTP server settings</summary>
+            <p class="hint" style="margin-top:10px">Only used when SMTP is selected above.</p>
+            <div class="row">
+              <div>
+                <label for="mail_host">Host</label>
+                <input id="mail_host" type="text" name="mail_host" value="<?= e(post('mail_host')) ?>" placeholder="smtp.example.com">
+              </div>
+              <div style="max-width:110px">
+                <label for="mail_port">Port</label>
+                <input id="mail_port" type="text" name="mail_port" value="<?= e(post('mail_port', '587')) ?>">
+              </div>
+            </div>
+            <label for="mail_encryption">Encryption</label>
+            <select id="mail_encryption" name="mail_encryption" class="sel">
+              <option value="tls" <?= post('mail_encryption', 'tls') === 'tls' ? 'selected' : '' ?>>STARTTLS (port 587)</option>
+              <option value="ssl" <?= post('mail_encryption') === 'ssl' ? 'selected' : '' ?>>SSL/TLS (port 465)</option>
+              <option value="none" <?= post('mail_encryption') === 'none' ? 'selected' : '' ?>>None</option>
+            </select>
+            <label for="mail_username">Username</label>
+            <input id="mail_username" type="text" name="mail_username" value="<?= e(post('mail_username')) ?>">
+            <label for="mail_password">Password</label>
+            <input id="mail_password" type="password" name="mail_password" value="<?= e((string) ($_POST['mail_password'] ?? '')) ?>">
+          </details>
+
+          <label class="cb" style="margin-top:18px">
+            <input type="checkbox" name="send_test" value="1" <?= post('send_test') === '1' ? 'checked' : '' ?>>
+            <span>Send a test message to <strong><?= e($adminEmail) ?></strong> before finishing</span>
+          </label>
+          <p class="hint">If the test fails, nothing is installed and you can correct the settings.</p>
+
           <button class="btn" type="submit">Install</button>
         </form>
         <?php
@@ -559,6 +765,13 @@ switch ($step) {
           and your settings were written to <code>app/config.php</code>.
         </div>
         <?= errorBlock($errors) ?>
+        <?php if (($_SESSION['installer_mail_transport'] ?? '') === 'log'): ?>
+          <div class="alert">
+            Mail is set to <strong>do not send</strong>, so new accounts cannot confirm their address and
+            will not be able to sign in. Change <code>MAIL_TRANSPORT</code> in <code>app/config.php</code>,
+            or create accounts yourself from the admin area.
+          </div>
+        <?php endif; ?>
         <p class="lead">
           One thing left: <strong>delete install.php</strong>. Leaving it on a live server lets anyone
           reconfigure your site.
@@ -602,5 +815,11 @@ switch ($step) {
 }
 
 $body = (string) ob_get_clean();
-$labels = ['requirements' => 'requirements', 'database' => 'database', 'site' => 'site', 'done' => 'done'];
+$labels = [
+    'requirements' => 'requirements',
+    'database'     => 'database',
+    'site'         => 'site',
+    'mail'         => 'mail',
+    'done'         => 'done',
+];
 render(ucfirst($labels[$step] ?? 'Install'), $body, $labels[$step] ?? 'requirements');

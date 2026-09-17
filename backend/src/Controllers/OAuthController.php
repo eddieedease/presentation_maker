@@ -186,6 +186,10 @@ final class OAuthController
         $user = $linked->fetch();
 
         if ($user !== false) {
+            if ((int) $user['is_active'] !== 1) {
+                throw HttpException::forbidden('This account has been disabled by an administrator.');
+            }
+
             return $user;
         }
 
@@ -194,7 +198,8 @@ final class OAuthController
         $user = $byEmail->fetch();
 
         if ($user === false) {
-            $pdo->prepare('INSERT INTO users (email, name, avatar_url) VALUES (?, ?, ?)')
+            // The provider already proved the address, so skip our own confirmation.
+            $pdo->prepare('INSERT INTO users (email, name, avatar_url, email_verified_at) VALUES (?, ?, ?, NOW())')
                 ->execute([$profile['email'], $profile['name'], $profile['avatar']]);
             $user = AuthController::findById((int) $pdo->lastInsertId());
         }

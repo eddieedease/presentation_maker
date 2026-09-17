@@ -37,7 +37,17 @@
           }
 
           @if (el.type === 'image') {
-            <label class="label" for="el-src">Image URL</label>
+            <button type="button" class="btn-primary w-full py-2 text-xs" (click)="pickerOpen.set(true)">
+              {{ el.src ? 'Replace image' : 'Upload or choose an image' }}
+            </button>
+
+            @if (el.src) {
+              <div class="mt-2 overflow-hidden rounded-lg border border-white/10">
+                <img [src]="el.src" [alt]="el.alt" class="aspect-video w-full bg-ink-900 object-contain" />
+              </div>
+            }
+
+            <label class="label mt-3" for="el-src">Or link to an image</label>
             <input
               id="el-src"
               class="field"
@@ -254,17 +264,22 @@
                 id="el-color"
                 type="color"
                 class="h-9 w-12 cursor-pointer rounded border border-white/10 bg-ink-900"
-                [value]="el.style.color"
+                [value]="el.style.color || themeTextColour()"
                 (focus)="beginEdit()"
                 (input)="setStyle({ color: $any($event.target).value })"
               />
-              <input
-                class="field font-mono text-xs"
-                [value]="el.style.color"
-                (focus)="beginEdit()"
-                (input)="setStyle({ color: $any($event.target).value })"
-              />
+              <button
+                type="button"
+                class="btn-ghost flex-1 px-2 py-1.5 text-xs"
+                [class.!border-indigo-400]="el.style.color === ''"
+                (click)="setStyle({ color: '' }, true)"
+              >
+                Follow theme
+              </button>
             </div>
+            <p class="mt-1 text-xs text-slate-500">
+              {{ el.style.color === '' ? 'Using the deck theme colour.' : 'Overriding the deck theme.' }}
+            </p>
           </section>
         }
 
@@ -551,3 +566,7 @@
     }
   </div>
 </div>
+
+@if (pickerOpen()) {
+  <app-image-picker (picked)="onImagePicked($event)" (closed)="pickerOpen.set(false)" />
+}

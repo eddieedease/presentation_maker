@@ -62,7 +62,9 @@ export function contentStyle(element: SlideElement): Record<string, string> {
 
   return {
     ...base,
-    color: style.color,
+    // An empty colour is left off entirely so the value inherits from the
+    // reveal.js theme (or, in the editor, from the canvas).
+    ...(style.color === '' ? {} : { color: style.color }),
     'font-size': `${style.fontSize}px`,
     'font-weight': String(style.fontWeight),
     'font-style': style.italic ? 'italic' : 'normal',

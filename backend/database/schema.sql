@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS users (
   name          VARCHAR(120)    NOT NULL,
   password_hash VARCHAR(255)    NULL,
   avatar_url    VARCHAR(512)    NULL,
+  role          ENUM('user','admin') NOT NULL DEFAULT 'user',
+  is_active     TINYINT(1)      NOT NULL DEFAULT 1,
+  email_verified_at DATETIME    NULL,
   created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -64,4 +67,44 @@ CREATE TABLE IF NOT EXISTS publications (
   UNIQUE KEY uq_publication_project (project_id),
   UNIQUE KEY uq_publication_slug (slug),
   CONSTRAINT fk_publication_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id     BIGINT UNSIGNED NOT NULL,
+  token_hash  CHAR(64)        NOT NULL,
+  expires_at  DATETIME        NOT NULL,
+  consumed_at DATETIME        NULL,
+  created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_verification_hash (token_hash),
+  KEY idx_verification_user (user_id),
+  CONSTRAINT fk_verification_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS images (
+  id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id       BIGINT UNSIGNED NOT NULL,
+  -- Public, unguessable handle. Sequential ids would let anyone enumerate
+  -- every uploaded image, including those in unpublished decks.
+  token         CHAR(32)        NOT NULL,
+  original_name VARCHAR(255)    NOT NULL,
+  mime          VARCHAR(64)     NOT NULL,
+  extension     VARCHAR(8)      NOT NULL,
+  width         INT UNSIGNED    NOT NULL,
+  height        INT UNSIGNED    NOT NULL,
+  bytes         INT UNSIGNED    NOT NULL,
+  created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_images_token (token),
+  KEY idx_images_user (user_id),
+  CONSTRAINT fk_images_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS migrations (
+  id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name       VARCHAR(191)    NOT NULL,
+  applied_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_migrations_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

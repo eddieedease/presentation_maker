@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './core/guards/auth.guard';
+import { adminGuard, authGuard, guestGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -17,6 +17,17 @@ export const routes: Routes = [
     path: 'auth/callback',
     title: 'Signing you in…',
     loadComponent: () => import('./features/auth/oauth-callback').then((m) => m.OauthCallback),
+  },
+  {
+    path: 'verify',
+    title: 'Confirming your email…',
+    loadComponent: () => import('./features/auth/verify-email').then((m) => m.VerifyEmail),
+  },
+  {
+    path: 'admin',
+    title: 'Accounts — Presentation Maker',
+    canActivate: [adminGuard],
+    loadComponent: () => import('./features/admin/admin').then((m) => m.Admin),
   },
   {
     path: 'workspace',

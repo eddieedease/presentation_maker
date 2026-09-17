@@ -8,3 +8,6 @@ coverage/
 
 # Written by the web installer on a hosted install
 backend/config.php
+
+# Uploaded images (development)
+backend/storage/

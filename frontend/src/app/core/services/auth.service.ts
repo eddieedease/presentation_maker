@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, firstValueFrom, of, shareReplay, tap } from 'rxjs';
 import { API_BASE_URL } from '../api.config';
-import { AuthResponse, AuthTokens, OAuthProvider, User } from '../models/user.model';
+import { AuthResponse, AuthTokens, OAuthProvider, RegisterResponse, User } from '../models/user.model';
 
 const ACCESS_KEY = 'presmaker.accessToken';
 const REFRESH_KEY = 'presmaker.refreshToken';
@@ -20,6 +20,7 @@ export class AuthService {
 
   readonly user = this.currentUser.asReadonly();
   readonly isAuthenticated = computed(() => this.currentUser() !== null);
+  readonly isAdmin = computed(() => this.currentUser()?.role === 'admin');
   readonly isRestored = this.restored.asReadonly();
 
   get accessToken(): string | null {
@@ -44,10 +45,23 @@ export class AuthService {
     }
   }
 
-  register(payload: { name: string; email: string; password: string }): Observable<AuthResponse> {
+  /**
+   * Registration deliberately does not start a session: the account cannot be
+   * used until the email address is confirmed.
+   */
+  register(payload: { name: string; email: string; password: string }): Observable<RegisterResponse> {
+    return this.http.post<RegisterResponse>(`${this.baseUrl}/auth/register`, payload);
+  }
+
+  /** Confirms an address and signs the user in with the returned session. */
+  verifyEmail(token: string): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>(`${this.baseUrl}/auth/register`, payload)
+      .post<AuthResponse>(`${this.baseUrl}/auth/verify`, { token })
       .pipe(tap((response) => this.applySession(response)));
+  }
+
+  resendVerification(email: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/auth/verify/resend`, { email });
   }
 
   login(payload: { email: string; password: string }): Observable<AuthResponse> {

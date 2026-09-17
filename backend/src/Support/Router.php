@@ -8,32 +8,32 @@ use Throwable;
 
 final class Router
 {
-    /** @var list<array{method: string, pattern: string, handler: callable, protected: bool}> */
+    /** @var list<array{method: string, pattern: string, handler: callable, protected: bool, admin: bool}> */
     private array $routes = [];
 
-    public function get(string $pattern, callable $handler, bool $protected = false): void
+    public function get(string $pattern, callable $handler, bool $protected = false, bool $admin = false): void
     {
-        $this->add('GET', $pattern, $handler, $protected);
+        $this->add('GET', $pattern, $handler, $protected, $admin);
     }
 
-    public function post(string $pattern, callable $handler, bool $protected = false): void
+    public function post(string $pattern, callable $handler, bool $protected = false, bool $admin = false): void
     {
-        $this->add('POST', $pattern, $handler, $protected);
+        $this->add('POST', $pattern, $handler, $protected, $admin);
     }
 
-    public function put(string $pattern, callable $handler, bool $protected = false): void
+    public function put(string $pattern, callable $handler, bool $protected = false, bool $admin = false): void
     {
-        $this->add('PUT', $pattern, $handler, $protected);
+        $this->add('PUT', $pattern, $handler, $protected, $admin);
     }
 
-    public function delete(string $pattern, callable $handler, bool $protected = false): void
+    public function delete(string $pattern, callable $handler, bool $protected = false, bool $admin = false): void
     {
-        $this->add('DELETE', $pattern, $handler, $protected);
+        $this->add('DELETE', $pattern, $handler, $protected, $admin);
     }
 
-    private function add(string $method, string $pattern, callable $handler, bool $protected): void
+    private function add(string $method, string $pattern, callable $handler, bool $protected, bool $admin = false): void
     {
-        $this->routes[] = compact('method', 'pattern', 'handler', 'protected');
+        $this->routes[] = compact('method', 'pattern', 'handler', 'protected', 'admin');
     }
 
     public function dispatch(Request $request): void
@@ -63,8 +63,8 @@ final class Router
             $request->params = $params;
 
             try {
-                if ($route['protected']) {
-                    $this->authenticate($request);
+                if ($route['protected'] || $route['admin']) {
+                    $this->authenticate($request, $route['admin']);
                 }
 
                 ($route['handler'])($request);
@@ -83,7 +83,7 @@ final class Router
             : Response::error(404, 'Endpoint not found.');
     }
 
-    private function authenticate(Request $request): void
+    private function authenticate(Request $request, bool $requireAdmin): void
     {
         $token = $request->bearerToken();
         if ($token === null) {
@@ -95,7 +95,27 @@ final class Router
             throw HttpException::unauthorized('An access token is required.');
         }
 
-        $request->setUserId((int) ($claims['sub'] ?? 0));
+        // Role and activation are read per request rather than trusted from the
+        // token, so disabling an account or changing a role takes effect at once
+        // instead of when the current access token happens to expire.
+        $statement = Database::connection()->prepare(
+            'SELECT id, email, name, role, is_active, email_verified_at FROM users WHERE id = ?'
+        );
+        $statement->execute([(int) ($claims['sub'] ?? 0)]);
+        $user = $statement->fetch();
+
+        if ($user === false) {
+            throw HttpException::unauthorized('Your account no longer exists.');
+        }
+        if ((int) $user['is_active'] !== 1) {
+            throw HttpException::forbidden('This account has been disabled by an administrator.');
+        }
+
+        $request->setUser($user);
+
+        if ($requireAdmin && $user['role'] !== 'admin') {
+            throw HttpException::forbidden('Administrator access is required.');
+        }
     }
 
     /** @return array<string, string>|null */
