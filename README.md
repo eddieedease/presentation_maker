@@ -87,6 +87,8 @@ or start from scratch with `docker compose down -v && docker compose up -d`.
 Slides are authored on a fixed **1280 × 720** canvas; reveal.js scales that canvas
 to whatever screen the deck is viewed on, so what you place is what people see.
 
+- **Add a slide from a layout** — title, bullets, two columns, image and text,
+  chart and takeaway, table, section break or quote — instead of a blank canvas
 - **Insert** headings, text, bullet lists, quotes, images, video, tables, charts,
   icons, code, maths and shapes
 - **Upload images** from the Element inspector: drag and drop, or pick from the

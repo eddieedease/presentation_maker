@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 import { Router, RouterLink } from '@angular/router';
 import { publicDeckUrl } from '../../core/api.config';
 import { apiMessage } from '../../core/api-error';
-import { ELEMENT_TYPES, ElementType } from '../../core/models/deck.model';
+import { ELEMENT_TYPES, ElementType, RevealTheme } from '../../core/models/deck.model';
+import { SLIDE_LAYOUTS, SlideLayout } from '../../core/models/slide-layouts';
 import { EditorStore } from './editor-store';
 import { Inspector } from './inspector';
 import { SlideCanvas } from './slide-canvas';
@@ -44,6 +45,17 @@ export class Editor {
 
   protected readonly elementTypes = ELEMENT_TYPES;
   protected readonly labels = ELEMENT_LABELS;
+
+  protected readonly layouts = SLIDE_LAYOUTS;
+  /**
+   * Previews are built once and reused. Rebuilding them on every change
+   * detection pass would hand the thumbnails a new slide id each time and
+   * defeat their @for tracking.
+   */
+  protected readonly layoutPreviews = SLIDE_LAYOUTS.map((layout) => ({ layout, slide: layout.build() }));
+  protected readonly choosingLayout = signal(false);
+  /** The picker sits outside the loaded-deck block, so it needs its own handle. */
+  protected readonly deckTheme = computed<RevealTheme>(() => this.store.deck()?.theme ?? 'night');
 
   protected readonly loading = signal(true);
   protected readonly loadError = signal<string | null>(null);
@@ -94,6 +106,12 @@ export class Editor {
 
   protected addElement(type: ElementType): void {
     this.store.addElement(type);
+  }
+
+  protected addSlideWith(layout: SlideLayout): void {
+    this.choosingLayout.set(false);
+    // Built fresh rather than reusing the preview, so ids are unique.
+    this.store.addSlide(layout.build());
   }
 
   /**
@@ -187,9 +205,10 @@ export class Editor {
     }
 
     // While the share dialog is open it owns the keyboard.
-    if (this.showPublish()) {
+    if (this.showPublish() || this.choosingLayout()) {
       if (event.key === 'Escape') {
         this.showPublish.set(false);
+        this.choosingLayout.set(false);
       }
       return;
     }
@@ -222,6 +241,7 @@ export class Editor {
     }
 
     if (event.key === 'Escape') {
+      this.choosingLayout.set(false);
       this.store.selectedElementId.set(null);
       return;
     }

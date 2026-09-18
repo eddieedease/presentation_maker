@@ -240,10 +240,13 @@ export class EditorStore {
     this.selectedElementId.set(null);
   }
 
-  addSlide(): void {
+  /** @param slide a layout's prepared slide; omitted means a blank one */
+  addSlide(slide?: Slide): void {
     const insertAt = this.slideIndex() + 1;
+    const next = slide ?? createSlide();
+
     this.commit((draft) => {
-      draft.slides.splice(insertAt, 0, createSlide());
+      draft.slides.splice(insertAt, 0, next);
     });
     this.selectSlide(insertAt);
   }

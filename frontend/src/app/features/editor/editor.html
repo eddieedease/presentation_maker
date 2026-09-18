@@ -63,7 +63,7 @@
       <aside class="flex w-52 shrink-0 flex-col border-r border-white/5 bg-ink-900">
         <div class="flex items-center justify-between border-b border-white/5 px-3 py-2">
           <span class="text-xs font-semibold tracking-wide text-slate-500 uppercase">Slides</span>
-          <button type="button" class="btn-ghost px-2 py-1 text-xs" (click)="store.addSlide()" title="Add slide">+</button>
+          <button type="button" class="btn-ghost px-2 py-1 text-xs" (click)="choosingLayout.set(true)" title="Add slide">+</button>
         </div>
 
         <ol class="flex-1 space-y-2 overflow-y-auto p-2.5">
@@ -121,7 +121,7 @@
           }
         </ol>
 
-        <button type="button" class="btn-ghost m-2.5 py-2 text-xs" (click)="store.addSlide()">+ Add slide</button>
+        <button type="button" class="btn-ghost m-2.5 py-2 text-xs" (click)="choosingLayout.set(true)">+ Add slide</button>
       </aside>
 
       <!-- Stage -->
@@ -145,6 +145,35 @@
       <aside class="w-72 shrink-0 border-l border-white/5 bg-ink-900">
         <app-inspector />
       </aside>
+    </div>
+  }
+
+  <!-- Layout picker -->
+  @if (choosingLayout()) {
+    <div class="fixed inset-0 z-50 grid place-items-center bg-black/70 px-6" (click)="choosingLayout.set(false)">
+      <div class="panel flex max-h-[82vh] w-full max-w-3xl flex-col bg-ink-850 p-6" (click)="$event.stopPropagation()">
+        <div class="mb-4 flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-white">Add a slide</h2>
+            <p class="mt-0.5 text-xs text-slate-500">Pick a starting point — everything stays editable.</p>
+          </div>
+          <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="choosingLayout.set(false)">Cancel</button>
+        </div>
+
+        <div class="grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3">
+          @for (option of layoutPreviews; track option.layout.id) {
+            <button
+              type="button"
+              class="group rounded-lg border border-white/10 p-1.5 text-left transition hover:border-indigo-400"
+              (click)="addSlideWith(option.layout)"
+            >
+              <app-slide-thumbnail [slide]="option.slide" [width]="220" [theme]="deckTheme()" />
+              <p class="mt-1.5 px-1 text-xs font-medium text-slate-200">{{ option.layout.name }}</p>
+              <p class="mb-0.5 px-1 text-[11px] text-slate-500">{{ option.layout.description }}</p>
+            </button>
+          }
+        </div>
+      </div>
     </div>
   }
 
