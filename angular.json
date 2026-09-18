@@ -25,7 +25,7 @@
                 "input": "frontend/public"
               },
               {
-                "glob": "**/*.css",
+                "glob": "**/*",
                 "input": "node_modules/reveal.js/dist/theme",
                 "output": "reveal/theme"
               },
@@ -69,7 +69,7 @@
                   "input": "frontend/public"
                 },
                 {
-                  "glob": "**/*.css",
+                  "glob": "**/*",
                   "input": "node_modules/reveal.js/dist/theme",
                   "output": "reveal/theme"
                 },

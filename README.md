@@ -93,6 +93,10 @@ to whatever screen the deck is viewed on, so what you place is what people see.
 - **Drag** to move, drag the handles to resize — hold **Alt** for pixel-precise placement (snapping is 8 px otherwise)
 - **Double-click** any text element to edit it in place
 - The **Element / Slide / Deck** inspector controls typography, colour, position, per-slide backgrounds and transitions, and deck-wide theme and player options
+- **Themes** supply the background, the body and heading fonts, and whether
+  headings are capitalised. Anything you set explicitly on an element — a font,
+  a colour — overrides the theme for that element, so leave those on their
+  defaults if you want a theme switch to be dramatic
 - **Build animations** map to reveal.js fragments: give elements a step order and they reveal one at a time
 - Changes **autosave** 1.2 s after you stop; `Ctrl+S` forces it
 

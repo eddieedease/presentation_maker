@@ -84,7 +84,11 @@ export function contentStyle(element: SlideElement): Record<string, string> {
     'text-align': style.align,
     'line-height': String(style.lineHeight),
     'letter-spacing': `${style.letterSpacing}px`,
-    'font-family': style.fontFamily || 'inherit',
+    // reveal.js themes publish their fonts as :root custom properties. Using
+    // them here is what makes a theme switch visible: without this, headings
+    // fall back to the body font and every theme looks alike.
+    'font-family': style.fontFamily || `var(${element.type === 'heading' ? '--r-heading-font' : '--r-main-font'}, inherit)`,
+    ...(element.type === 'heading' ? { 'text-transform': 'var(--r-heading-text-transform, none)' } : {}),
     'white-space': 'pre-wrap',
     'word-break': 'break-word',
   };

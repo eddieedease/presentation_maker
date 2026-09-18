@@ -5,12 +5,14 @@ import {
   DestroyRef,
   ElementRef,
   computed,
+  effect,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, Slide, SlideElement, THEME_PALETTE } from '../../core/models/deck.model';
 import { boxStyle, contentStyle, rotationTransform } from '../../shared/deck-style';
+import { ensureRevealTheme } from '../../shared/reveal-assets';
 import { ElementView } from '../../shared/element-view';
 import { EditorStore } from './editor-store';
 
@@ -79,6 +81,18 @@ export class SlideCanvas implements AfterViewInit {
   });
 
   private drag: DragState | null = null;
+
+  constructor() {
+    // Load the deck's theme stylesheet so the canvas can render the theme's own
+    // fonts. Its `.reveal` rules match nothing here; what we want are the
+    // @font-face declarations and the `--r-*` variables it puts on :root.
+    effect(() => {
+      const theme = this.store.deck()?.theme;
+      if (theme !== undefined) {
+        ensureRevealTheme(theme);
+      }
+    });
+  }
 
   ngAfterViewInit(): void {
     const observer = new ResizeObserver(([entry]) => {

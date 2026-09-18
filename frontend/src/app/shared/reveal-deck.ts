@@ -14,21 +14,10 @@ import RevealHighlight from 'reveal.js/plugin/highlight/highlight.esm.js';
 import RevealNotes from 'reveal.js/plugin/notes/notes.esm.js';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, Deck, Slide } from '../core/models/deck.model';
 import { boxStyle, fragmentClass, rotationTransform } from './deck-style';
+import { ensureRevealTheme, ensureStylesheet } from './reveal-assets';
 import { ElementView } from './element-view';
 
-/** reveal.js stylesheets are loaded as global <link>s so they reach projected slides. */
-function ensureStylesheet(id: string, href: string): void {
-  let link = document.getElementById(id) as HTMLLinkElement | null;
-  if (link === null) {
-    link = document.createElement('link');
-    link.id = id;
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-  }
-  if (link.getAttribute('href') !== href) {
-    link.setAttribute('href', href);
-  }
-}
+
 
 @Component({
   selector: 'app-reveal-deck',
@@ -107,9 +96,7 @@ export class RevealDeck implements AfterViewInit {
     ensureStylesheet('reveal-core-css', 'reveal/reveal.css');
     ensureStylesheet('reveal-highlight-css', 'reveal/highlight/monokai.css');
 
-    effect(() => {
-      ensureStylesheet('reveal-theme-css', `reveal/theme/${this.deck().theme}.css`);
-    });
+    effect(() => ensureRevealTheme(this.deck().theme));
 
     // Re-initialise when the deck document itself is swapped (preview reopened).
     effect(() => {
