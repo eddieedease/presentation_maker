@@ -22,10 +22,19 @@ final class DeckNormalizer
 
     private const TRANSITIONS = ['none', 'fade', 'slide', 'convex', 'concave', 'zoom'];
     private const TRANSITION_SPEEDS = ['default', 'fast', 'slow'];
-    private const ELEMENT_TYPES = ['heading', 'text', 'list', 'image', 'code', 'shape', 'quote'];
+    private const ELEMENT_TYPES = [
+        'heading', 'text', 'list', 'quote', 'image', 'video',
+        'table', 'chart', 'icon', 'code', 'math', 'shape',
+    ];
     private const ALIGNMENTS = ['left', 'center', 'right'];
     private const VERTICAL_ALIGNMENTS = ['start', 'center', 'end'];
-    private const SHAPES = ['rectangle', 'ellipse', 'line'];
+    private const SHAPES = ['rectangle', 'ellipse', 'line', 'arrow'];
+    private const CHART_KINDS = ['bar', 'column', 'line', 'pie'];
+    private const VIDEO_PROVIDERS = ['youtube', 'vimeo', ''];
+
+    private const MAX_TABLE_ROWS = 40;
+    private const MAX_TABLE_COLUMNS = 12;
+    private const MAX_CHART_POINTS = 24;
     private const ANIMATIONS = ['none', 'fade-in', 'fade-up', 'fade-left', 'fade-right', 'zoom-in', 'highlight'];
     private const BACKGROUND_TYPES = ['color', 'gradient', 'image'];
 
@@ -129,6 +138,14 @@ final class DeckNormalizer
             'alt'      => self::text($element['alt'] ?? '', 300),
             'language' => preg_replace('/[^a-z0-9+#-]/i', '', self::text($element['language'] ?? 'javascript', 30)) ?: 'plaintext',
             'shape'    => self::pick($element['shape'] ?? null, self::SHAPES, 'rectangle'),
+            'icon'      => self::iconName($element['icon'] ?? ''),
+            'videoProvider' => self::pick($element['videoProvider'] ?? null, self::VIDEO_PROVIDERS, ''),
+            'videoId'   => self::videoId(
+                self::pick($element['videoProvider'] ?? null, self::VIDEO_PROVIDERS, ''),
+                self::text($element['videoId'] ?? '', 32)
+            ),
+            'table'     => self::normalizeTable($element['table'] ?? null),
+            'chart'     => self::normalizeChart($element['chart'] ?? null),
             'style'    => [
                 'fontSize'        => self::number($style['fontSize'] ?? 32, 8, 400, 32),
                 'fontFamily'      => self::text($style['fontFamily'] ?? '', 120),
@@ -153,6 +170,92 @@ final class DeckNormalizer
                 'order' => (int) self::number($animation['order'] ?? 0, 0, 60, 0),
             ],
         ];
+    }
+
+    /**
+     * @param mixed $input
+     *
+     * @return array<string, mixed>
+     */
+    private static function normalizeTable(mixed $input): array
+    {
+        $table = is_array($input) ? $input : [];
+        $rows = is_array($table['rows'] ?? null) ? array_values($table['rows']) : [];
+
+        $normalized = [];
+        foreach (array_slice($rows, 0, self::MAX_TABLE_ROWS) as $row) {
+            $cells = is_array($row) ? array_values($row) : [];
+            $normalized[] = array_map(
+                static fn (mixed $cell): string => self::text($cell, 300),
+                array_slice($cells, 0, self::MAX_TABLE_COLUMNS)
+            );
+        }
+
+        if ($normalized === []) {
+            $normalized = [['', '']];
+        }
+
+        // Every row must be the same width, or the rendered table goes ragged.
+        $width = max(array_map('count', $normalized));
+        foreach ($normalized as $index => $row) {
+            $normalized[$index] = array_pad($row, $width, '');
+        }
+
+        return [
+            'headerRow' => self::bool($table['headerRow'] ?? true, true),
+            'rows'      => $normalized,
+        ];
+    }
+
+    /**
+     * @param mixed $input
+     *
+     * @return array<string, mixed>
+     */
+    private static function normalizeChart(mixed $input): array
+    {
+        $chart = is_array($input) ? $input : [];
+        $points = is_array($chart['points'] ?? null) ? array_values($chart['points']) : [];
+
+        $normalized = [];
+        foreach (array_slice($points, 0, self::MAX_CHART_POINTS) as $point) {
+            if (!is_array($point)) {
+                continue;
+            }
+
+            $normalized[] = [
+                'label' => self::text($point['label'] ?? '', 60),
+                'value' => self::number($point['value'] ?? 0, -1000000000, 1000000000, 0),
+            ];
+        }
+
+        return [
+            'kind'       => self::pick($chart['kind'] ?? null, self::CHART_KINDS, 'bar'),
+            'points'     => $normalized,
+            'showValues' => self::bool($chart['showValues'] ?? true, true),
+            'showAxis'   => self::bool($chart['showAxis'] ?? true, true),
+        ];
+    }
+
+    /** Icon names index a fixed client-side set, so only the shape of the key matters. */
+    private static function iconName(mixed $value): string
+    {
+        $name = strtolower(self::text($value, 40));
+
+        return preg_match('/^[a-z0-9-]{1,40}$/', $name) === 1 ? $name : 'star';
+    }
+
+    /**
+     * Video is embed-only. Ids are checked against each provider's own shape so
+     * a deck cannot smuggle a path or a query string into the embed URL.
+     */
+    private static function videoId(string $provider, string $value): string
+    {
+        return match ($provider) {
+            'youtube' => preg_match('/^[A-Za-z0-9_-]{5,20}$/', $value) === 1 ? $value : '',
+            'vimeo'   => preg_match('/^[0-9]{5,15}$/', $value) === 1 ? $value : '',
+            default   => '',
+        };
     }
 
     /** @param list<string> $allowed */

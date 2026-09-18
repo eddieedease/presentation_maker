@@ -56,7 +56,9 @@ export function contentStyle(element: SlideElement): Record<string, string> {
     'flex-direction': 'column',
     'justify-content': justify[style.verticalAlign],
     'box-sizing': 'border-box',
-    'background': style.background,
+    // A shape paints itself; painting the box too would fill the whole element,
+    // which is wrong for anything that is not a full-bleed rectangle.
+    'background': element.type === 'shape' ? 'transparent' : style.background,
     'border-radius': `${style.borderRadius}px`,
     'padding': `${style.padding}px`,
     'overflow': 'hidden',

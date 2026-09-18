@@ -10,7 +10,14 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, Slide, SlideElement, THEME_PALETTE } from '../../core/models/deck.model';
+import {
+  CANVAS_HEIGHT,
+  CANVAS_WIDTH,
+  Slide,
+  SlideElement,
+  THEME_PALETTE,
+  isDarkTheme,
+} from '../../core/models/deck.model';
 import { boxStyle, contentStyle, rotationTransform } from '../../shared/deck-style';
 import { ensureRevealTheme } from '../../shared/reveal-assets';
 import { ElementView } from '../../shared/element-view';
@@ -65,6 +72,12 @@ export class SlideCanvas implements AfterViewInit {
   protected readonly palette = computed(() => {
     const theme = this.store.deck()?.theme;
     return theme === undefined ? THEME_PALETTE.night : THEME_PALETTE[theme];
+  });
+
+  /** Charts pick their light or dark steps from the slide's own surface. */
+  protected readonly isDark = computed(() => {
+    const theme = this.store.deck()?.theme;
+    return theme === undefined ? true : isDarkTheme(theme);
   });
 
   /** Handles must stay a constant size on screen regardless of canvas zoom. */

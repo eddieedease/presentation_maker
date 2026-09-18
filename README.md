@@ -87,7 +87,8 @@ or start from scratch with `docker compose down -v && docker compose up -d`.
 Slides are authored on a fixed **1280 × 720** canvas; reveal.js scales that canvas
 to whatever screen the deck is viewed on, so what you place is what people see.
 
-- **Insert** headings, text, bullet lists, quotes, images, code blocks and shapes
+- **Insert** headings, text, bullet lists, quotes, images, video, tables, charts,
+  icons, code, maths and shapes
 - **Upload images** from the Element inspector: drag and drop, or pick from the
   images you have already uploaded
 - **Drag** to move, drag the handles to resize — hold **Alt** for pixel-precise placement (snapping is 8 px otherwise)
@@ -244,6 +245,37 @@ must return **403**.
   `AllowOverride All` applies to your web root — some hosts disable `.htaccess`.
 - **OAuth** needs the `curl` extension. Without it, email and password sign-in
   still works.
+
+---
+
+## What you can put on a slide
+
+| Element | Notes |
+| ------- | ----- |
+| Heading, text, bullets, quote | Font and capitalisation follow the deck theme unless you override them |
+| Image | Uploaded, resized and stripped of metadata — see [Images](#images) |
+| Video | **Embed only.** Paste a YouTube or Vimeo link; nothing is uploaded, so nothing is stored |
+| Table | Edited as a grid in the inspector, with an optional header row |
+| Chart | Bar, column, line or pie from a handful of data points |
+| Icon | A built-in set drawn as SVG, so it inherits colour and scales cleanly |
+| Code | Syntax-highlighted by reveal.js |
+| Maths | LaTeX, typeset with KaTeX |
+| Shape | Rectangle, ellipse, line or arrow |
+
+### Charts
+
+Charts are drawn as plain SVG — no charting library — so a published deck stays
+self-contained and needs no runtime JavaScript. Colours come from a palette
+validated for colour-vision deficiency on both light and dark surfaces, and the
+chart picks the side matching your deck theme automatically. Values are labelled
+directly rather than relying on hover, because a slide has no pointer.
+
+### Video and maths, deliberately local
+
+Video is embed-only: the deck stores the provider and the video id, never a URL,
+so a slide cannot carry an arbitrary third-party frame. KaTeX is served from your
+own install rather than reveal.js's default CDN, so published decks keep working
+offline and pull in no third-party script.
 
 ---
 

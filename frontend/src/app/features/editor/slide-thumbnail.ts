@@ -1,5 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, RevealTheme, Slide, THEME_PALETTE } from '../../core/models/deck.model';
+import {
+  CANVAS_HEIGHT,
+  CANVAS_WIDTH,
+  RevealTheme,
+  Slide,
+  THEME_PALETTE,
+  isDarkTheme,
+} from '../../core/models/deck.model';
 import { boxStyle, rotationTransform } from '../../shared/deck-style';
 import { ElementView } from '../../shared/element-view';
 
@@ -21,7 +28,7 @@ import { ElementView } from '../../shared/element-view';
       >
         @for (element of slide().elements; track element.id) {
           <div [style]="box(element)" [style.transform]="rotate(element)">
-            <app-element-view [element]="element" />
+            <app-element-view [element]="element" [dark]="isDark()" />
           </div>
         }
       </div>
@@ -42,6 +49,7 @@ export class SlideThumbnail {
   readonly theme = input<RevealTheme>('night');
 
   protected readonly palette = computed(() => THEME_PALETTE[this.theme()]);
+  protected readonly isDark = computed(() => isDarkTheme(this.theme()));
 
   protected readonly canvasWidth = CANVAS_WIDTH;
   protected readonly canvasHeight = CANVAS_HEIGHT;

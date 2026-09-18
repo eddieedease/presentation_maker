@@ -1,6 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { SlideElement } from '../core/models/deck.model';
+import { ChartView } from './chart-view';
 import { contentStyle, listItems, shapeStyle } from './deck-style';
+import { IconPart, iconOrFallback } from './icons';
+import { MathView } from './math-view';
 
 /**
  * Renders the inner content of a single slide element. Shared by the editor
@@ -12,56 +16,61 @@ import { contentStyle, listItems, shapeStyle } from './deck-style';
 @Component({
   selector: 'app-element-view',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div [style]="content()">
-      @switch (element().type) {
-        @case ('image') {
-          @if (element().src) {
-            <img
-              [src]="element().src"
-              [alt]="element().alt"
-              style="width:100%;height:100%;border:none;box-shadow:none;margin:0;max-width:none;max-height:none"
-              [style.object-fit]="element().style.objectFit"
-            />
-          } @else {
-            <div
-              style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border:2px dashed currentColor;opacity:.45;font-size:14px;border-radius:8px"
-            >
-              Add an image URL
-            </div>
-          }
-        }
-        @case ('code') {
-          <pre
-            style="margin:0;width:100%;height:100%;box-shadow:none;background:transparent;font-size:inherit"
-          ><code [class]="'language-' + element().language" style="max-height:none;padding:0;background:transparent">{{ element().text }}</code></pre>
-        }
-        @case ('list') {
-          <ul style="margin:0;padding-left:1.2em;list-style:disc;display:block">
-            @for (item of items(); track $index) {
-              <li style="margin:0">{{ item }}</li>
-            }
-          </ul>
-        }
-        @case ('shape') {
-          <div [style]="shape()"></div>
-        }
-        @case ('quote') {
-          <blockquote style="margin:0;padding:0;width:100%;background:transparent;box-shadow:none;font-style:inherit">
-            {{ element().text }}
-          </blockquote>
-        }
-        @default {
-          <div style="width:100%">{{ element().text }}</div>
-        }
-      }
-    </div>
-  `,
+  imports: [ChartView, MathView],
+  templateUrl: './element-view.html',
 })
 export class ElementView {
   readonly element = input.required<SlideElement>();
+  /** Charts pick their palette from the surface they sit on. */
+  readonly dark = input(false);
+  /**
+   * The editor draws a still placeholder for video: a live iframe would swallow
+   * the pointer events that dragging and selection depend on.
+   */
+  readonly interactive = input(false);
+
+  private readonly sanitizer = inject(DomSanitizer);
 
   protected readonly content = computed(() => contentStyle(this.element()));
   protected readonly shape = computed(() => shapeStyle(this.element()));
   protected readonly items = computed(() => listItems(this.element()));
+  protected readonly icon = computed(() => iconOrFallback(this.element().icon));
+
+  protected readonly tableRows = computed(() => {
+    const table = this.element().table;
+    const rows = table.rows;
+
+    return {
+      head: table.headerRow ? (rows[0] ?? []) : null,
+      body: table.headerRow ? rows.slice(1) : rows,
+    };
+  });
+
+  /**
+   * Embed URL for the two providers we accept.
+   *
+   * Angular refuses a plain string in an iframe's resource-URL slot, and
+   * rightly so. Trusting it here is safe because the URL is built entirely from
+   * constants plus an id the normalizer has already constrained to that
+   * provider's own character set — nothing user-authored reaches the URL.
+   */
+  protected readonly embedUrl = computed<SafeResourceUrl | null>(() => {
+    const element = this.element();
+    if (element.videoId === '') {
+      return null;
+    }
+
+    const url =
+      element.videoProvider === 'youtube'
+        ? `https://www.youtube-nocookie.com/embed/${element.videoId}`
+        : element.videoProvider === 'vimeo'
+          ? `https://player.vimeo.com/video/${element.videoId}`
+          : null;
+
+    return url === null ? null : this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  });
+
+  protected partKind(part: IconPart): string {
+    return part.k;
+  }
 }

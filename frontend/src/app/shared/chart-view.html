@@ -1,0 +1,120 @@
+<svg
+  [attr.viewBox]="'0 0 ' + width() + ' ' + height()"
+  width="100%"
+  height="100%"
+  [attr.font-size]="fontSize()"
+  fill="currentColor"
+  style="overflow: visible"
+>
+  @if (points().length === 0) {
+    <text [attr.x]="width() / 2" [attr.y]="height() / 2" text-anchor="middle" opacity="0.5">
+      Add data in the inspector
+    </text>
+  }
+
+  <!-- Bar and column -->
+  @if (baseline(); as axis) {
+    @if (showAxis()) {
+      <line
+        [attr.x1]="axis.x1"
+        [attr.x2]="axis.x2"
+        [attr.y1]="axis.y"
+        [attr.y2]="axis.y"
+        stroke="currentColor"
+        stroke-width="1"
+        opacity="0.25"
+      />
+    }
+  }
+
+  @for (bar of bars(); track bar.key) {
+    <!-- Rounded at the data end, square where it meets the baseline -->
+    <path [attr.d]="bar.d" [attr.fill]="bar.colour" />
+    <text
+      [attr.x]="bar.labelX"
+      [attr.y]="bar.labelY"
+      [attr.text-anchor]="bar.anchor"
+      dominant-baseline="middle"
+      fill="currentColor"
+      opacity="0.75"
+    >
+      {{ bar.label }}
+    </text>
+    @if (showValues()) {
+      <text
+        [attr.x]="bar.valueX"
+        [attr.y]="bar.valueY"
+        [attr.text-anchor]="kind() === 'bar' ? 'start' : 'middle'"
+        [attr.dominant-baseline]="kind() === 'bar' ? 'middle' : 'auto'"
+        fill="currentColor"
+        font-weight="600"
+      >
+        {{ bar.value }}
+      </text>
+    }
+  }
+
+  <!-- Line -->
+  @if (kind() === 'line' && linePath().path) {
+    <path
+      [attr.d]="linePath().path"
+      fill="none"
+      [attr.stroke]="dark() ? '#3987e5' : '#2a78d6'"
+      stroke-width="2"
+      stroke-linejoin="round"
+      stroke-linecap="round"
+    />
+    @for (marker of linePath().markers; track marker.key) {
+      <!-- 2px surface ring keeps overlapping markers legible -->
+      <circle
+        [attr.cx]="marker.cx"
+        [attr.cy]="marker.cy"
+        r="5"
+        [attr.fill]="dark() ? '#3987e5' : '#2a78d6'"
+        stroke="var(--r-background-color, transparent)"
+        stroke-width="2"
+      />
+      <text
+        [attr.x]="marker.cx"
+        [attr.y]="linePath().labelY"
+        text-anchor="middle"
+        fill="currentColor"
+        opacity="0.75"
+      >
+        {{ marker.label }}
+      </text>
+      @if (showValues()) {
+        <text
+          [attr.x]="marker.cx"
+          [attr.y]="marker.cy - 12"
+          text-anchor="middle"
+          fill="currentColor"
+          font-weight="600"
+        >
+          {{ marker.value }}
+        </text>
+      }
+    }
+  }
+
+  <!-- Pie: always direct-labelled, which is also the relief the light palette needs -->
+  @for (slice of slices(); track slice.key) {
+    <path
+      [attr.d]="slice.d"
+      [attr.fill]="slice.colour"
+      stroke="var(--r-background-color, transparent)"
+      stroke-width="2"
+    />
+  }
+  @for (slice of slices(); track slice.key) {
+    <text
+      [attr.x]="slice.labelX"
+      [attr.y]="slice.labelY"
+      [attr.text-anchor]="slice.anchor"
+      fill="currentColor"
+      opacity="0.85"
+    >
+      {{ slice.label }}
+    </text>
+  }
+</svg>

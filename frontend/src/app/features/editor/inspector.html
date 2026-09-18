@@ -72,6 +72,141 @@
             </select>
           }
 
+          @if (el.type === 'video') {
+            <label class="label" for="el-video">YouTube or Vimeo link</label>
+            <input
+              id="el-video"
+              class="field"
+              placeholder="https://www.youtube.com/watch?v=…"
+              (focus)="beginEdit()"
+              (change)="applyVideoUrl($any($event.target).value)"
+            />
+            @if (videoError(); as message) {
+              <p class="mt-1 text-xs text-rose-300">{{ message }}</p>
+            } @else if (el.videoId) {
+              <p class="mt-1 text-xs text-emerald-300">{{ el.videoProvider }} · {{ el.videoId }}</p>
+            }
+            <p class="mt-1 text-xs text-slate-500">
+              Nothing is uploaded — the deck stores the video id and embeds the player.
+            </p>
+          }
+
+          @if (el.type === 'icon') {
+            <label class="label">Icon</label>
+            <div class="grid max-h-56 grid-cols-6 gap-1 overflow-y-auto rounded-lg border border-white/10 bg-ink-900 p-2">
+              @for (key of iconKeys; track key) {
+                <button
+                  type="button"
+                  class="grid aspect-square place-items-center rounded transition"
+                  [class]="el.icon === key ? 'bg-indigo-500/30 text-indigo-200' : 'text-slate-400 hover:bg-white/5'"
+                  [title]="icons[key].label"
+                  (click)="setElement({ icon: key }, true)"
+                >
+                  <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    @for (part of icons[key].parts; track $index) {
+                      @switch (part.k) {
+                        @case ('circle') { <circle [attr.cx]="$any(part).cx" [attr.cy]="$any(part).cy" [attr.r]="$any(part).r" /> }
+                        @case ('rect') { <rect [attr.x]="$any(part).x" [attr.y]="$any(part).y" [attr.width]="$any(part).w" [attr.height]="$any(part).h" [attr.rx]="$any(part).rx" /> }
+                        @case ('line') { <line [attr.x1]="$any(part).x1" [attr.y1]="$any(part).y1" [attr.x2]="$any(part).x2" [attr.y2]="$any(part).y2" /> }
+                        @case ('polyline') { <polyline [attr.points]="$any(part).points" /> }
+                        @case ('polygon') { <polygon [attr.points]="$any(part).points" fill="currentColor" stroke-width="0" /> }
+                        @case ('path') { <path [attr.d]="$any(part).d" /> }
+                      }
+                    }
+                  </svg>
+                </button>
+              }
+            </div>
+          }
+
+          @if (el.type === 'table') {
+            <label class="mb-2 flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" class="accent-indigo-500" [checked]="el.table.headerRow" (change)="toggleHeaderRow($any($event.target).checked)" />
+              First row is a header
+            </label>
+
+            <div class="max-h-60 overflow-auto rounded-lg border border-white/10 bg-ink-900 p-2">
+              @for (row of el.table.rows; track $index; let r = $index) {
+                <div class="mb-1 flex items-center gap-1">
+                  @for (cell of row; track $index; let c = $index) {
+                    <input
+                      class="min-w-0 flex-1 rounded border border-white/10 bg-ink-850 px-1.5 py-1 text-xs text-slate-100 focus:border-indigo-400 focus:outline-none"
+                      [value]="cell"
+                      [placeholder]="r === 0 && el.table.headerRow ? 'Header' : 'Cell'"
+                      (focus)="beginEdit()"
+                      (input)="setCell(r, c, $any($event.target).value)"
+                    />
+                  }
+                  <button type="button" class="shrink-0 px-1 text-xs text-slate-500 hover:text-rose-300" title="Remove row" (click)="removeRow(r)">✕</button>
+                </div>
+              }
+            </div>
+
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" class="btn-ghost px-2 py-1.5 text-xs" (click)="addRow()">+ Row</button>
+              <button type="button" class="btn-ghost px-2 py-1.5 text-xs" (click)="addColumn()">+ Column</button>
+              <button type="button" class="btn-ghost px-2 py-1.5 text-xs" (click)="removeColumn()">− Column</button>
+            </div>
+          }
+
+          @if (el.type === 'chart') {
+            <label class="label" for="el-chart-kind">Chart type</label>
+            <select id="el-chart-kind" class="field" [value]="el.chart.kind" (change)="setChartKind($any($event.target).value)">
+              @for (kind of chartKinds; track kind) {
+                <option [value]="kind" [selected]="kind === el.chart.kind">{{ kind }}</option>
+              }
+            </select>
+
+            <label class="label mt-3">Data</label>
+            <div class="max-h-56 overflow-auto rounded-lg border border-white/10 bg-ink-900 p-2">
+              @for (point of el.chart.points; track $index; let i = $index) {
+                <div class="mb-1 flex items-center gap-1">
+                  <input
+                    class="min-w-0 flex-1 rounded border border-white/10 bg-ink-850 px-1.5 py-1 text-xs text-slate-100 focus:border-indigo-400 focus:outline-none"
+                    placeholder="Label"
+                    [value]="point.label"
+                    (focus)="beginEdit()"
+                    (input)="setPoint(i, { label: $any($event.target).value })"
+                  />
+                  <input
+                    type="number"
+                    class="w-20 shrink-0 rounded border border-white/10 bg-ink-850 px-1.5 py-1 text-xs text-slate-100 focus:border-indigo-400 focus:outline-none"
+                    [value]="point.value"
+                    (focus)="beginEdit()"
+                    (input)="setPoint(i, { value: num($any($event.target).value) })"
+                  />
+                  <button type="button" class="shrink-0 px-1 text-xs text-slate-500 hover:text-rose-300" title="Remove" (click)="removePoint(i)">✕</button>
+                </div>
+              }
+            </div>
+            <button type="button" class="btn-ghost mt-2 w-full px-2 py-1.5 text-xs" (click)="addPoint()">+ Data point</button>
+
+            <label class="mt-3 flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" class="accent-indigo-500" [checked]="el.chart.showValues" (change)="setChartFlag('showValues', $any($event.target).checked)" />
+              Show values
+            </label>
+            <label class="flex items-center gap-2 text-sm text-slate-300">
+              <input type="checkbox" class="accent-indigo-500" [checked]="el.chart.showAxis" (change)="setChartFlag('showAxis', $any($event.target).checked)" />
+              Show baseline
+            </label>
+            <p class="mt-2 text-xs text-slate-500">
+              Colours follow the deck theme's light or dark surface automatically.
+            </p>
+          }
+
+          @if (el.type === 'math') {
+            <label class="label" for="el-math">LaTeX</label>
+            <textarea
+              id="el-math"
+              rows="3"
+              class="field font-mono text-xs"
+              [value]="el.text"
+              (focus)="beginEdit()"
+              (input)="setElement({ text: $any($event.target).value })"
+            ></textarea>
+            <p class="mt-1 text-xs text-slate-500">Rendered with KaTeX, e.g. <code>\frac{{ '{' }}a{{ '}' }}{{ '{' }}b{{ '}' }}</code></p>
+          }
+
           @if (el.type === 'code') {
             <label class="label mt-3" for="el-lang">Language</label>
             <select id="el-lang" class="field" [value]="el.language" (change)="setElement({ language: $any($event.target).value }, true)">

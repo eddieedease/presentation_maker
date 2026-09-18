@@ -51,7 +51,20 @@ export type Transition = (typeof TRANSITIONS)[number];
 export const TRANSITION_SPEEDS = ['default', 'fast', 'slow'] as const;
 export type TransitionSpeed = (typeof TRANSITION_SPEEDS)[number];
 
-export const ELEMENT_TYPES = ['heading', 'text', 'list', 'quote', 'image', 'code', 'shape'] as const;
+export const ELEMENT_TYPES = [
+  'heading',
+  'text',
+  'list',
+  'quote',
+  'image',
+  'video',
+  'table',
+  'chart',
+  'icon',
+  'code',
+  'math',
+  'shape',
+] as const;
 export type ElementType = (typeof ELEMENT_TYPES)[number];
 
 export const ANIMATIONS = [
@@ -67,7 +80,33 @@ export type Animation = (typeof ANIMATIONS)[number];
 
 export type TextAlign = 'left' | 'center' | 'right';
 export type VerticalAlign = 'start' | 'center' | 'end';
-export type ShapeKind = 'rectangle' | 'ellipse' | 'line';
+export const SHAPE_KINDS = ['rectangle', 'ellipse', 'line', 'arrow'] as const;
+export type ShapeKind = (typeof SHAPE_KINDS)[number];
+
+export const CHART_KINDS = ['bar', 'column', 'line', 'pie'] as const;
+export type ChartKind = (typeof CHART_KINDS)[number];
+
+/** Video is embed-only: nothing is uploaded, so nothing has to be stored. */
+export const VIDEO_PROVIDERS = ['youtube', 'vimeo'] as const;
+export type VideoProvider = (typeof VIDEO_PROVIDERS)[number];
+
+export interface TableData {
+  /** Render the first row as a header. */
+  headerRow: boolean;
+  rows: string[][];
+}
+
+export interface ChartPoint {
+  label: string;
+  value: number;
+}
+
+export interface ChartData {
+  kind: ChartKind;
+  points: ChartPoint[];
+  showValues: boolean;
+  showAxis: boolean;
+}
 export type ObjectFit = 'cover' | 'contain' | 'fill';
 export type BackgroundType = 'color' | 'gradient' | 'image';
 
@@ -106,6 +145,13 @@ export interface SlideElement {
   alt: string;
   language: string;
   shape: ShapeKind;
+  /** Icon elements: a key into ICONS. */
+  icon: string;
+  /** Video elements: the provider and id parsed out of the pasted URL. */
+  videoProvider: VideoProvider | '';
+  videoId: string;
+  table: TableData;
+  chart: ChartData;
   style: ElementStyle;
   animation: { type: Animation; order: number };
 }
@@ -135,6 +181,16 @@ export interface Deck {
   slideNumber: boolean;
   loop: boolean;
   slides: Slide[];
+}
+
+/** True when a theme's background is dark, so charts can pick their dark steps. */
+export function isDarkTheme(theme: RevealTheme): boolean {
+  const hex = THEME_PALETTE[theme].background.replace('#', '');
+  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+  const [r, g, b] = [0, 2, 4].map((i) => Number.parseInt(full.slice(i, i + 2), 16) / 255);
+
+  // Rec. 709 relative luminance is enough to choose a palette side.
+  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0) < 0.5;
 }
 
 function id(prefix: string): string {
@@ -211,6 +267,52 @@ const ELEMENT_PRESETS: Record<ElementType, ElementOverrides> = {
     height: 200,
     style: { background: '#6366f1', borderRadius: 16 },
   },
+  video: {
+    width: 640,
+    height: 360,
+    style: { borderRadius: 12 },
+  },
+  table: {
+    width: 760,
+    height: 240,
+    table: {
+      headerRow: true,
+      rows: [
+        ['Quarter', 'Target', 'Actual'],
+        ['Q1', '100', '112'],
+        ['Q2', '120', '118'],
+      ],
+    },
+    style: { fontSize: 24, borderWidth: 1, borderColor: '#94a3b8' },
+  },
+  chart: {
+    width: 640,
+    height: 360,
+    chart: {
+      kind: 'bar',
+      points: [
+        { label: 'Q1', value: 112 },
+        { label: 'Q2', value: 118 },
+        { label: 'Q3', value: 96 },
+        { label: 'Q4', value: 134 },
+      ],
+      showValues: true,
+      showAxis: true,
+    },
+    style: { fontSize: 18 },
+  },
+  icon: {
+    icon: 'star',
+    width: 140,
+    height: 140,
+    style: { color: '#6366f1' },
+  },
+  math: {
+    text: 'e^{i\\pi} + 1 = 0',
+    width: 460,
+    height: 120,
+    style: { fontSize: 44, align: 'center', verticalAlign: 'center' },
+  },
 };
 
 export function createElement(type: ElementType, overrides: ElementOverrides = {}): SlideElement {
@@ -231,6 +333,11 @@ export function createElement(type: ElementType, overrides: ElementOverrides = {
     alt: '',
     language: 'javascript',
     shape: 'rectangle',
+    icon: 'star',
+    videoProvider: '',
+    videoId: '',
+    table: { headerRow: true, rows: [['', '']] },
+    chart: { kind: 'bar', points: [], showValues: true, showAxis: true },
     animation: { type: 'none', order: 0 },
     ...preset,
     ...overrides,

@@ -4,6 +4,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  computed,
   effect,
   inject,
   input,
@@ -12,7 +13,7 @@ import {
 import Reveal, { RevealApi } from 'reveal.js/dist/reveal.esm.js';
 import RevealHighlight from 'reveal.js/plugin/highlight/highlight.esm.js';
 import RevealNotes from 'reveal.js/plugin/notes/notes.esm.js';
-import { CANVAS_HEIGHT, CANVAS_WIDTH, Deck, Slide } from '../core/models/deck.model';
+import { CANVAS_HEIGHT, CANVAS_WIDTH, Deck, Slide, isDarkTheme } from '../core/models/deck.model';
 import { boxStyle, fragmentClass, rotationTransform } from './deck-style';
 import { ensureRevealTheme, ensureStylesheet } from './reveal-assets';
 import { ElementView } from './element-view';
@@ -49,7 +50,7 @@ import { ElementView } from './element-view';
                 >
                   <!-- Rotation lives here, not on the fragment element above. -->
                   <div style="width:100%;height:100%" [style.transform]="rotate(element)">
-                    <app-element-view [element]="element" />
+                    <app-element-view [element]="element" [dark]="isDark()" [interactive]="true" />
                   </div>
                 </div>
               }
@@ -86,6 +87,8 @@ export class RevealDeck implements AfterViewInit {
   protected readonly box = boxStyle;
   protected readonly fragment = fragmentClass;
   protected readonly rotate = rotationTransform;
+
+  protected readonly isDark = computed(() => isDarkTheme(this.deck().theme));
 
   private readonly root = viewChild.required<ElementRef<HTMLElement>>('root');
   private readonly destroyRef = inject(DestroyRef);

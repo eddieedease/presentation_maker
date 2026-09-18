@@ -38,6 +38,16 @@
                 "glob": "*.css",
                 "input": "node_modules/reveal.js/plugin/highlight",
                 "output": "reveal/highlight"
+              },
+              {
+                "glob": "katex.min.css",
+                "input": "node_modules/katex/dist",
+                "output": "katex"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/katex/dist/fonts",
+                "output": "katex/fonts"
               }
             ],
             "styles": [
@@ -112,6 +122,16 @@
                   "glob": ".htaccess",
                   "input": "deploy/app",
                   "output": "app"
+                },
+                {
+                  "glob": "katex.min.css",
+                  "input": "node_modules/katex/dist",
+                  "output": "katex"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/katex/dist/fonts",
+                  "output": "katex/fonts"
                 }
               ]
             },

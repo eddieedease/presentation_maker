@@ -14,7 +14,12 @@ const ELEMENT_LABELS: Record<ElementType, string> = {
   list: 'Bullets',
   quote: 'Quote',
   image: 'Image',
+  video: 'Video',
+  table: 'Table',
+  chart: 'Chart',
+  icon: 'Icon',
   code: 'Code',
+  math: 'Math',
   shape: 'Shape',
 };
 

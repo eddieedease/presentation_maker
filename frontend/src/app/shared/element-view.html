@@ -1,0 +1,170 @@
+<div [style]="content()">
+  @switch (element().type) {
+    @case ('image') {
+      @if (element().src) {
+        <img
+          [src]="element().src"
+          [alt]="element().alt"
+          style="width:100%;height:100%;border:none;box-shadow:none;margin:0;max-width:none;max-height:none"
+          [style.object-fit]="element().style.objectFit"
+        />
+      } @else {
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border:2px dashed currentColor;opacity:.45;font-size:14px;border-radius:8px">
+          Add an image
+        </div>
+      }
+    }
+
+    @case ('video') {
+      @if (embedUrl(); as url) {
+        @if (interactive()) {
+          <iframe
+            [src]="url"
+            style="width:100%;height:100%;border:0;display:block"
+            loading="lazy"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture; fullscreen"
+            allowfullscreen
+          ></iframe>
+        } @else {
+          <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(0,0,0,.45);border-radius:inherit">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" style="opacity:.85">
+              <polygon points="8 5 19 12 8 19" />
+            </svg>
+            <span style="font-size:14px;opacity:.75;text-transform:capitalize">{{ element().videoProvider }} video</span>
+          </div>
+        }
+      } @else {
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border:2px dashed currentColor;opacity:.45;font-size:14px;border-radius:8px">
+          Paste a YouTube or Vimeo link
+        </div>
+      }
+    }
+
+    @case ('table') {
+      <table style="width:100%;border-collapse:collapse;font-size:inherit;margin:0;color:inherit">
+        @if (tableRows().head; as head) {
+          <thead>
+            <tr>
+              @for (cell of head; track $index) {
+                <th
+                  style="text-align:left;padding:.35em .6em;font-weight:700"
+                  [style.border]="element().style.borderWidth + 'px solid ' + element().style.borderColor"
+                >
+                  {{ cell }}
+                </th>
+              }
+            </tr>
+          </thead>
+        }
+        <tbody>
+          @for (row of tableRows().body; track $index) {
+            <tr>
+              @for (cell of row; track $index) {
+                <td
+                  style="padding:.35em .6em"
+                  [style.border]="element().style.borderWidth + 'px solid ' + element().style.borderColor"
+                >
+                  {{ cell }}
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    @case ('chart') {
+      <app-chart-view
+        [chart]="element().chart"
+        [width]="element().width"
+        [height]="element().height"
+        [fontSize]="element().style.fontSize"
+        [dark]="dark()"
+      />
+    }
+
+    @case ('icon') {
+      <svg
+        viewBox="0 0 24 24"
+        style="width:100%;height:100%;display:block"
+        [attr.fill]="icon().filled ? 'currentColor' : 'none'"
+        stroke="currentColor"
+        [attr.stroke-width]="icon().filled ? 0 : 1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        @for (part of icon().parts; track $index) {
+          @switch (part.k) {
+            @case ('circle') {
+              <circle [attr.cx]="$any(part).cx" [attr.cy]="$any(part).cy" [attr.r]="$any(part).r" />
+            }
+            @case ('rect') {
+              <rect
+                [attr.x]="$any(part).x"
+                [attr.y]="$any(part).y"
+                [attr.width]="$any(part).w"
+                [attr.height]="$any(part).h"
+                [attr.rx]="$any(part).rx"
+              />
+            }
+            @case ('line') {
+              <line
+                [attr.x1]="$any(part).x1"
+                [attr.y1]="$any(part).y1"
+                [attr.x2]="$any(part).x2"
+                [attr.y2]="$any(part).y2"
+              />
+            }
+            @case ('polyline') {
+              <polyline [attr.points]="$any(part).points" />
+            }
+            @case ('polygon') {
+              <polygon [attr.points]="$any(part).points" [attr.fill]="'currentColor'" [attr.stroke-width]="0" />
+            }
+            @case ('path') {
+              <path [attr.d]="$any(part).d" />
+            }
+          }
+        }
+      </svg>
+    }
+
+    @case ('math') {
+      <app-math-view [latex]="element().text" />
+    }
+
+    @case ('code') {
+      <pre style="margin:0;width:100%;height:100%;box-shadow:none;background:transparent;font-size:inherit"><code [class]="'language-' + element().language" style="max-height:none;padding:0;background:transparent">{{ element().text }}</code></pre>
+    }
+
+    @case ('list') {
+      <ul style="margin:0;padding-left:1.2em;list-style:disc;display:block">
+        @for (item of items(); track $index) {
+          <li style="margin:0">{{ item }}</li>
+        }
+      </ul>
+    }
+
+    @case ('shape') {
+      @if (element().shape === 'arrow') {
+        <svg viewBox="0 0 100 24" preserveAspectRatio="none" style="width:100%;height:100%;display:block">
+          <line x1="2" y1="12" x2="86" y2="12" [attr.stroke]="element().style.background" stroke-width="4" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+          <polygon points="84 4 98 12 84 20" [attr.fill]="element().style.background" />
+        </svg>
+      } @else {
+        <div [style]="shape()"></div>
+      }
+    }
+
+    @case ('quote') {
+      <blockquote style="margin:0;padding:0;width:100%;background:transparent;box-shadow:none;font-style:inherit">
+        {{ element().text }}
+      </blockquote>
+    }
+
+    @default {
+      <div style="width:100%">{{ element().text }}</div>
+    }
+  }
+</div>

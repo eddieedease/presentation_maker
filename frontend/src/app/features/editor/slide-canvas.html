@@ -39,7 +39,7 @@
               (pointerdown)="$event.stopPropagation()"
             ></textarea>
           } @else {
-            <app-element-view [element]="element" />
+            <app-element-view [element]="element" [dark]="isDark()" />
           }
 
           <!-- Selection chrome -->
