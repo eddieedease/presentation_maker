@@ -38,7 +38,7 @@
       >
         ↷
       </button>
-      <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="openPreview()">Preview</button>
+      <button type="button" class="btn-ghost px-3 py-1.5 text-xs" title="Opens in a new tab" (click)="openPreview()">Preview ↗</button>
       <button type="button" class="btn-primary px-3 py-1.5 text-xs" (click)="openPublish()">
         {{ store.publication() ? 'Share' : 'Publish' }}
       </button>
@@ -145,21 +145,6 @@
       <aside class="w-72 shrink-0 border-l border-white/5 bg-ink-900">
         <app-inspector />
       </aside>
-    </div>
-  }
-
-  <!-- Preview overlay -->
-  @if (previewing() && store.deck(); as deck) {
-    <!-- The overlay must hide the editor behind it, so it cannot be transparent.
-         Painting it in the theme's own colour keeps the preview faithful. -->
-    <div class="fixed inset-0 z-50 flex flex-col" [style.background]="themeBackground()">
-      <div class="flex shrink-0 items-center justify-between border-b border-white/10 bg-black/70 px-4 py-2">
-        <span class="text-sm text-slate-300">Preview — {{ store.title() }}</span>
-        <button type="button" class="btn-ghost px-3 py-1.5 text-xs" (click)="previewing.set(false)">Close (Esc)</button>
-      </div>
-      <div class="min-h-0 flex-1">
-        <app-reveal-deck [deck]="deck" />
-      </div>
     </div>
   }
 

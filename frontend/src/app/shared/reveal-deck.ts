@@ -13,7 +13,7 @@ import Reveal, { RevealApi } from 'reveal.js/dist/reveal.esm.js';
 import RevealHighlight from 'reveal.js/plugin/highlight/highlight.esm.js';
 import RevealNotes from 'reveal.js/plugin/notes/notes.esm.js';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, Deck, Slide } from '../core/models/deck.model';
-import { boxStyle, fragmentClass } from './deck-style';
+import { boxStyle, fragmentClass, rotationTransform } from './deck-style';
 import { ElementView } from './element-view';
 
 /** reveal.js stylesheets are loaded as global <link>s so they reach projected slides. */
@@ -58,7 +58,10 @@ function ensureStylesheet(id: string, href: string): void {
                     element.animation.type === 'none' ? null : element.animation.order
                   "
                 >
-                  <app-element-view [element]="element" />
+                  <!-- Rotation lives here, not on the fragment element above. -->
+                  <div style="width:100%;height:100%" [style.transform]="rotate(element)">
+                    <app-element-view [element]="element" />
+                  </div>
                 </div>
               }
             </div>
@@ -93,6 +96,7 @@ export class RevealDeck implements AfterViewInit {
   protected readonly canvasHeight = CANVAS_HEIGHT;
   protected readonly box = boxStyle;
   protected readonly fragment = fragmentClass;
+  protected readonly rotate = rotationTransform;
 
   private readonly root = viewChild.required<ElementRef<HTMLElement>>('root');
   private readonly destroyRef = inject(DestroyRef);

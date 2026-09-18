@@ -2,8 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 import { Router, RouterLink } from '@angular/router';
 import { publicDeckUrl } from '../../core/api.config';
 import { apiMessage } from '../../core/api-error';
-import { ELEMENT_TYPES, ElementType, THEME_PALETTE } from '../../core/models/deck.model';
-import { RevealDeck } from '../../shared/reveal-deck';
+import { ELEMENT_TYPES, ElementType } from '../../core/models/deck.model';
 import { EditorStore } from './editor-store';
 import { Inspector } from './inspector';
 import { SlideCanvas } from './slide-canvas';
@@ -22,7 +21,7 @@ const ELEMENT_LABELS: Record<ElementType, string> = {
 @Component({
   selector: 'app-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, SlideCanvas, SlideThumbnail, Inspector, RevealDeck],
+  imports: [RouterLink, SlideCanvas, SlideThumbnail, Inspector],
   providers: [EditorStore],
   templateUrl: './editor.html',
   host: {
@@ -43,16 +42,9 @@ export class Editor {
 
   protected readonly loading = signal(true);
   protected readonly loadError = signal<string | null>(null);
-  protected readonly previewing = signal(false);
   protected readonly showPublish = signal(false);
   protected readonly publishing = signal(false);
   protected readonly copied = signal(false);
-
-  /** Background of the preview overlay, matching the deck's reveal.js theme. */
-  protected readonly themeBackground = computed(() => {
-    const theme = this.store.deck()?.theme;
-    return theme === undefined ? THEME_PALETTE.night.background : THEME_PALETTE[theme].background;
-  });
 
   protected readonly saveLabel = computed(() => {
     switch (this.store.saveState()) {
@@ -99,9 +91,30 @@ export class Editor {
     this.store.addElement(type);
   }
 
+  /**
+   * Opens the preview in its own tab.
+   *
+   * The tab is opened synchronously, before the save is awaited: browsers only
+   * accept window.open while a user gesture is still on the stack, so opening
+   * it after the await would be blocked. The blank tab is pointed at the
+   * preview once the draft is safely saved, which also removes any race
+   * between the save and the preview's own fetch.
+   */
   protected async openPreview(): Promise<void> {
+    // Named, so clicking Preview repeatedly reuses one tab instead of
+    // scattering a new one across the taskbar each time.
+    const tab = window.open('', 'presmaker-preview');
     await this.store.saveNow();
-    this.previewing.set(true);
+
+    const url = new URL(`preview/${this.id()}`, document.baseURI).href;
+    if (tab === null) {
+      // Popup blocked: fall back to navigating this tab.
+      window.location.href = url;
+      return;
+    }
+
+    tab.location.replace(url);
+    tab.focus();
   }
 
   /**
@@ -168,11 +181,9 @@ export class Editor {
       return;
     }
 
-    // While an overlay is open the deck owns the keyboard — otherwise the
-    // element-nudge shortcuts would swallow reveal.js navigation.
-    if (this.previewing() || this.showPublish()) {
+    // While the share dialog is open it owns the keyboard.
+    if (this.showPublish()) {
       if (event.key === 'Escape') {
-        this.previewing.set(false);
         this.showPublish.set(false);
       }
       return;

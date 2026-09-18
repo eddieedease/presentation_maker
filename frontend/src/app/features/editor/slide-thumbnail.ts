@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, RevealTheme, Slide, THEME_PALETTE } from '../../core/models/deck.model';
-import { boxStyle } from '../../shared/deck-style';
+import { boxStyle, rotationTransform } from '../../shared/deck-style';
 import { ElementView } from '../../shared/element-view';
 
 /**
@@ -20,7 +20,7 @@ import { ElementView } from '../../shared/element-view';
         [style.transform]="'scale(' + scale() + ')'"
       >
         @for (element of slide().elements; track element.id) {
-          <div [style]="box(element)">
+          <div [style]="box(element)" [style.transform]="rotate(element)">
             <app-element-view [element]="element" />
           </div>
         }
@@ -46,6 +46,7 @@ export class SlideThumbnail {
   protected readonly canvasWidth = CANVAS_WIDTH;
   protected readonly canvasHeight = CANVAS_HEIGHT;
   protected readonly box = boxStyle;
+  protected readonly rotate = rotationTransform;
 
   protected readonly scale = computed(() => this.width() / CANVAS_WIDTH);
 

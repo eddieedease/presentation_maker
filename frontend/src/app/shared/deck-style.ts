@@ -24,8 +24,20 @@ export function boxStyle(element: SlideElement): Record<string, string> {
     width: `${element.width}px`,
     height: `${element.height}px`,
     'z-index': String(element.zIndex),
-    transform: element.rotation === 0 ? 'none' : `rotate(${element.rotation}deg)`,
   };
+}
+
+/**
+ * Rotation, kept separate from boxStyle on purpose.
+ *
+ * reveal.js animates directional fragments (fade-left and friends) with
+ * `transform: translate(...)` on the element carrying the `fragment` class. An
+ * inline transform on that same element wins over the stylesheet and silently
+ * cancels the movement, so the player applies rotation to an inner wrapper
+ * instead and leaves the fragment element's transform alone.
+ */
+export function rotationTransform(element: SlideElement): string {
+  return element.rotation === 0 ? 'none' : `rotate(${element.rotation}deg)`;
 }
 
 /** Visual styling of the element's content box. */

@@ -22,6 +22,7 @@
       @for (element of current.elements; track element.id) {
         <div
           [style]="box(element)"
+          [style.transform]="rotate(element)"
           [class.cursor-move]="!element.locked"
           [class.cursor-not-allowed]="element.locked"
           (pointerdown)="startDrag($event, element, 'move')"

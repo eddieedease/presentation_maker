@@ -10,7 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { CANVAS_HEIGHT, CANVAS_WIDTH, Slide, SlideElement, THEME_PALETTE } from '../../core/models/deck.model';
-import { boxStyle, contentStyle } from '../../shared/deck-style';
+import { boxStyle, contentStyle, rotationTransform } from '../../shared/deck-style';
 import { ElementView } from '../../shared/element-view';
 import { EditorStore } from './editor-store';
 
@@ -120,6 +120,10 @@ export class SlideCanvas implements AfterViewInit {
 
   protected box(element: SlideElement): Record<string, string> {
     return boxStyle(element);
+  }
+
+  protected rotate(element: SlideElement): string {
+    return rotationTransform(element);
   }
 
   protected editorStyle(element: SlideElement): Record<string, string> {

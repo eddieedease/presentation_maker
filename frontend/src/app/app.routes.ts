@@ -24,6 +24,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/verify-email').then((m) => m.VerifyEmail),
   },
   {
+    path: 'preview/:id',
+    title: 'Preview — Presentation Maker',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/preview/preview').then((m) => m.Preview),
+  },
+  {
     path: 'admin',
     title: 'Accounts — Presentation Maker',
     canActivate: [adminGuard],
