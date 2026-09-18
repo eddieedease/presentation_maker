@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { apiMessage } from '../../core/api-error';
 import {
+  Animation,
   Deck,
   ElementType,
   Slide,
@@ -294,18 +295,48 @@ export class EditorStore {
 
   // ---- elements ----------------------------------------------------------
 
+  /** Default build for elements added after the first one on a slide. */
+  private static readonly DEFAULT_ANIMATION: Animation = 'fade-up';
+
   addElement(type: ElementType): void {
     const index = this.slideIndex();
+    const existing = this.currentSlide()?.elements ?? [];
     const element = createElement(type, {
       x: 120,
-      y: 140 + (this.currentSlide()?.elements.length ?? 0) * 24,
-      zIndex: (this.currentSlide()?.elements.length ?? 0) + 1,
+      y: 140 + existing.length * 24,
+      zIndex: existing.length + 1,
+      animation: this.nextAnimation(existing),
     });
 
     this.commit((draft) => {
       draft.slides[index]?.elements.push(element);
     });
     this.selectedElementId.set(element.id);
+  }
+
+  /**
+   * Works out the build step for a newly inserted element, so a staged reveal
+   * is the default rather than something to wire up by hand.
+   *
+   * The first element on a slide gets no animation: it should be on screen when
+   * the slide arrives, otherwise every slide would open empty. Each element
+   * after that takes the next step number, reusing whichever animation the
+   * slide already uses so one slide does not mix four different effects.
+   *
+   * @param existing elements already on the slide
+   */
+  private nextAnimation(existing: SlideElement[]): SlideElement['animation'] {
+    if (existing.length === 0) {
+      return { type: 'none', order: 0 };
+    }
+
+    const animated = existing.filter((element) => element.animation.type !== 'none');
+    const highestOrder = Math.max(0, ...existing.map((element) => element.animation.order));
+
+    return {
+      type: animated.at(-1)?.animation.type ?? EditorStore.DEFAULT_ANIMATION,
+      order: highestOrder + 1,
+    };
   }
 
   /** `record: false` keeps intermediate drag frames out of the undo history. */
