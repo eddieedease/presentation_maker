@@ -194,8 +194,9 @@ final class ProjectController
      */
     private static function present(array $row, bool $withDeck = true): array
     {
-        $deck = json_decode((string) $row['deck'], true);
-        $deck = is_array($deck) ? $deck : DeckNormalizer::normalize(null);
+        // Normalised on the way out too, so a deck saved before a field existed
+        // still arrives with every field the editor expects.
+        $deck = DeckNormalizer::normalize(json_decode((string) $row['deck'], true));
 
         $project = [
             'id'          => (int) $row['id'],

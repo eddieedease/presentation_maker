@@ -79,6 +79,8 @@ or start from scratch with `docker compose down -v && docker compose up -d`.
 | `/editor/:id`     | The slide editor                                                         |
 | `/admin`          | Account administration (administrators only)                             |
 | `/p/:slug`        | The publish site — a public, full-screen reveal.js player                |
+| `/live/:id`       | Present a deck to a live audience (you, signed in)                       |
+| `/join`, `/join/:code` | What the audience opens on their phones                             |
 
 ---
 
@@ -136,6 +138,88 @@ nothing; publishing and revoking are always explicit button presses.
 > `api/images/<token>` URL until you delete it from the image library, so anyone
 > who saved an image URL keeps that image. Delete the image itself if that
 > matters.
+
+---
+
+## Live audience sessions
+
+Press **Present live** in the editor header and the deck opens in its own tab with
+a six-character join code. People open `/join` on their phones (or scan the QR
+code), type the code, and from then on:
+
+- their phone **follows the slide you are on**, so the room can read along
+- a **poll** or **open question** on that slide appears as a form they can answer
+- the answers fill in **on your slide in real time**
+
+Add the interactive elements from the editor's **Insert** bar:
+
+| Element | What the audience does | What you see |
+| ------- | ---------------------- | ------------ |
+| Poll | Picks one option, or several if you allow it. Can change their vote while voting is open | Bars with counts and percentages |
+| Question | Types an answer (up to 3 each, 280 characters) | The answers as cards on the slide |
+
+### While presenting
+
+The pill in the top-right shows the code and how many phones are connected. Click
+it, or press **C**, for the controls:
+
+| Key | Action |
+| --- | ------ |
+| `Q` | Show or hide the join screen — big code and QR, readable from the back of the room |
+| `C` | Audience controls: close or reopen responses, clear them, hide an individual answer |
+| `V` | Hide or show all open answers on the slide until you have read them |
+
+Refreshing the tab is safe: the session, its code and its responses continue, and
+the deck reopens on the slide the audience is on. **End session** closes it for
+everyone. A session you forget to end expires after six hours without activity.
+
+### Things worth knowing
+
+- **Phones see a snapshot.** The deck they follow is copied when you press Present
+  live. Speaker notes are removed from that copy. Editing a deck while presenting
+  changes nothing for the audience until you reload the presenter tab, which
+  re-snapshots it and keeps every response.
+- **The code is the only access control.** Anyone who has it can follow the deck,
+  exactly as with a published link.
+- **Voting is casual, not secure.** A phone is recognised by a random handle in
+  its browser storage, so reloading does not add a vote — but someone determined
+  can clear storage and vote again. Do not use it for anything that matters.
+- **Open answers are shown as plain text** and never as markup, so nobody can
+  inject HTML into your slide. Hide anything unsuitable from the controls panel;
+  consider pressing `V` to hold answers back until you have looked at them.
+- **Published decks (`/p/<slug>`) show polls and questions as static,** because
+  responses belong to a live session, not to the published snapshot.
+- Responses are kept for 30 days after a session ends and are then deleted
+  along with it. Deleting a deck deletes its sessions immediately.
+
+### No WebSockets, on purpose
+
+Shared PHP hosting cannot keep connections open, so phones **poll** a tiny
+endpoint every two seconds and download more only when something has changed
+(a version counter on the session). A phone that is hidden or in a pocket backs
+off to every eight seconds. The presenter's screen polls for results the same way.
+
+On a busy audience, or a host with few PHP workers, slow the polling by adding a
+line to `app/config.php` (it is read by the server and handed to every client, so
+there is nothing to rebuild):
+
+```php
+'LIVE_POLL_SECONDS' => '4',
+```
+
+As a rough guide, 100 phones at two seconds is about 50 very small requests per
+second; four seconds halves that.
+
+### Installing and upgrading
+
+The live tables (`live_sessions`, `live_participants`, `live_responses`) are part
+of `schema.sql`, so a **fresh install** through the web installer creates them with
+everything else — there is nothing extra to tick.
+
+On an **upgrade**, you do not have to re-run the installer: the first time anyone
+starts a live session on a database that predates the feature, the API applies the
+pending migration itself and carries on. Re-running the installer (as described
+under [Notes](#notes)) does the same and is also safe over a populated database.
 
 ---
 
@@ -241,7 +325,8 @@ must return **403**.
 - **To upgrade**, rebuild and upload everything *except* `app/config.php` and
   `app/storage/`. If the release adds database columns, re-run the installer
   (delete `app/config.php` first, then re-upload `install.php`): it applies the
-  pending migrations and leaves your data alone.
+  pending migrations and leaves your data alone. (Live sessions are the
+  exception: they migrate themselves the first time they are used.)
 - **Requires the GD extension** for image uploads. The installer checks for it.
 - If the API returns 500s, check that `mod_rewrite` is enabled and that
   `AllowOverride All` applies to your web root — some hosts disable `.htaccess`.
@@ -263,6 +348,8 @@ must return **403**.
 | Code | Syntax-highlighted by reveal.js |
 | Maths | LaTeX, typeset with KaTeX |
 | Shape | Rectangle, ellipse, line or arrow |
+| Poll | Multiple choice, answered from phones during a live session — see [Live audience sessions](#live-audience-sessions) |
+| Question | An open question; typed answers appear on the slide as they arrive |
 
 ### Charts
 
@@ -376,6 +463,18 @@ DELETE /api/admin/users/{id}
 POST   /api/admin/users/{id}/resend-verification
 
 GET    /api/public/presentations/{slug}
+
+POST   /api/projects/{id}/live       start, or resume, a live session
+GET    /api/live/{code}/results      votes, answers, connected phones
+POST   /api/live/{code}/slide        move the audience to a slide
+POST   /api/live/{code}/interactions/{elementId}          close / reopen
+DELETE /api/live/{code}/interactions/{elementId}/responses
+PUT    /api/live/{code}/responses/{id}                    hide / show an answer
+POST   /api/live/{code}/end
+GET    /api/live/{code}              (public) the deck and state, once on joining
+GET    /api/live/{code}/state        (public) polled; `?v=` answers `unchanged`
+POST   /api/live/{code}/respond      (public) a vote or an answer
+
 GET    /api/health
 ```
 

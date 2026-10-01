@@ -22,6 +22,8 @@ const ELEMENT_LABELS: Record<ElementType, string> = {
   code: 'Code',
   math: 'Math',
   shape: 'Shape',
+  poll: 'Poll',
+  question: 'Question',
 };
 
 @Component({
@@ -123,13 +125,22 @@ export class Editor {
    * preview once the draft is safely saved, which also removes any race
    * between the save and the preview's own fetch.
    */
-  protected async openPreview(): Promise<void> {
-    // Named, so clicking Preview repeatedly reuses one tab instead of
-    // scattering a new one across the taskbar each time.
-    const tab = window.open('', 'presmaker-preview');
+  protected openPreview(): Promise<void> {
+    return this.openInTab('preview', 'presmaker-preview');
+  }
+
+  /** Starts a live session in its own tab: the audience joins with a code. */
+  protected presentLive(): Promise<void> {
+    return this.openInTab('live', 'presmaker-live');
+  }
+
+  private async openInTab(route: 'preview' | 'live', name: string): Promise<void> {
+    // Named, so clicking repeatedly reuses one tab instead of scattering a new
+    // one across the taskbar each time.
+    const tab = window.open('', name);
     await this.store.saveNow();
 
-    const url = new URL(`preview/${this.id()}`, document.baseURI).href;
+    const url = new URL(`${route}/${this.id()}`, document.baseURI).href;
     if (tab === null) {
       // Popup blocked: fall back to navigating this tab.
       window.location.href = url;

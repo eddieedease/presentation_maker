@@ -7,6 +7,7 @@
         <span class="text-base font-semibold tracking-tight">Presentation Maker</span>
       </a>
       <div class="flex items-center gap-3">
+        <a routerLink="/join" class="text-sm font-medium text-slate-300 hover:text-white">Join with a code</a>
         @if (isAuthenticated()) {
           <a routerLink="/workspace" class="btn-primary">Open workspace</a>
         } @else {

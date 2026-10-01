@@ -6,6 +6,7 @@ import {
   Slide,
   THEME_PALETTE,
   isDarkTheme,
+  isInteractive,
 } from '../../core/models/deck.model';
 import { boxStyle, rotationTransform } from '../../shared/deck-style';
 import { ElementView } from '../../shared/element-view';
@@ -26,7 +27,7 @@ import { ElementView } from '../../shared/element-view';
         [style.height.px]="canvasHeight"
         [style.transform]="'scale(' + scale() + ')'"
       >
-        @for (element of slide().elements; track element.id) {
+        @for (element of elements(); track element.id) {
           <div [style]="box(element)" [style.transform]="rotate(element)">
             <app-element-view [element]="element" [dark]="isDark()" />
           </div>
@@ -47,6 +48,16 @@ export class SlideThumbnail {
   readonly width = input(168);
   /** Deck theme, so the miniature matches what the deck will look like. */
   readonly theme = input<RevealTheme>('night');
+
+  /**
+   * Leave polls and questions out of the picture. A phone answers them in its
+   * own form underneath, and a second, inert copy of the question is noise.
+   */
+  readonly omitInteractive = input(false);
+
+  protected readonly elements = computed(() =>
+    this.omitInteractive() ? this.slide().elements.filter((element) => !isInteractive(element)) : this.slide().elements,
+  );
 
   protected readonly palette = computed(() => THEME_PALETTE[this.theme()]);
   protected readonly isDark = computed(() => isDarkTheme(this.theme()));

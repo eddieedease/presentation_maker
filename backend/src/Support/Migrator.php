@@ -96,7 +96,45 @@ final class Migrator
                    CONSTRAINT fk_images_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
                  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
             ],
+            'live_sessions_tables' => [
+                static function (PDO $pdo): void {
+                    // The same statements the installer runs from schema.sql, so
+                    // an upgraded install and a fresh one cannot drift apart.
+                    foreach (self::schemaStatements('live_') as $statement) {
+                        $pdo->exec($statement);
+                    }
+                },
+            ],
         ];
+    }
+
+    /**
+     * CREATE TABLE statements from schema.sql whose table name starts with $prefix.
+     *
+     * @return list<string>
+     */
+    private static function schemaStatements(string $prefix): array
+    {
+        // src/Support -> the application root, which holds database/schema.sql
+        // in the repository and in an installed bundle alike.
+        $path = dirname(__DIR__, 2) . '/database/schema.sql';
+        $sql = is_file($path) ? file_get_contents($path) : false;
+        if ($sql === false) {
+            throw new \RuntimeException('Could not read database/schema.sql to apply the migration.');
+        }
+
+        // Drop comment lines first: they may contain semicolons.
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? $sql;
+
+        $statements = [];
+        foreach (explode(';', $sql) as $statement) {
+            $statement = trim($statement);
+            if (preg_match('/^CREATE TABLE IF NOT EXISTS ' . preg_quote($prefix, '/') . '/i', $statement) === 1) {
+                $statements[] = $statement;
+            }
+        }
+
+        return $statements;
     }
 
     private static function hasRun(PDO $pdo, string $name): bool

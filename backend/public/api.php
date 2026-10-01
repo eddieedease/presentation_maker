@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\AdminController;
 use App\Controllers\AuthController;
 use App\Controllers\ImageController;
+use App\Controllers\LiveController;
 use App\Controllers\OAuthController;
 use App\Controllers\ProjectController;
 use App\Controllers\PublicController;
@@ -34,6 +35,7 @@ $projects = new ProjectController();
 $public = new PublicController();
 $images = new ImageController();
 $admin = new AdminController();
+$live = new LiveController();
 
 $router->get('/api/health', static function (): void {
     Response::json(['status' => 'ok', 'time' => gmdate('c')]);
@@ -62,6 +64,20 @@ $router->delete('/api/projects/{id}', $projects->destroy(...), protected: true);
 $router->post('/api/projects/{id}/duplicate', $projects->duplicate(...), protected: true);
 $router->post('/api/projects/{id}/publish', $projects->publish(...), protected: true);
 $router->delete('/api/projects/{id}/publish', $projects->unpublish(...), protected: true);
+
+// --- Live sessions: presenter controls (owner-scoped) ---------------------
+$router->post('/api/projects/{id}/live', $live->start(...), protected: true);
+$router->get('/api/live/{code}/results', $live->results(...), protected: true);
+$router->post('/api/live/{code}/slide', $live->slide(...), protected: true);
+$router->post('/api/live/{code}/interactions/{elementId}', $live->setClosed(...), protected: true);
+$router->delete('/api/live/{code}/interactions/{elementId}/responses', $live->reset(...), protected: true);
+$router->put('/api/live/{code}/responses/{id}', $live->hide(...), protected: true);
+$router->post('/api/live/{code}/end', $live->end(...), protected: true);
+
+// --- Live sessions: audience (unauthenticated, the code is the permission) -
+$router->get('/api/live/{code}', $live->join(...));
+$router->get('/api/live/{code}/state', $live->state(...));
+$router->post('/api/live/{code}/respond', $live->respond(...));
 
 // --- Images ---------------------------------------------------------------
 $router->get('/api/images', $images->index(...), protected: true);

@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { SlideElement } from '../core/models/deck.model';
+import { PollResult, QuestionResult } from '../core/models/live.model';
 import { ChartView } from './chart-view';
 import { contentStyle, listItems, shapeStyle } from './deck-style';
 import { IconPart, iconOrFallback } from './icons';
+import { LiveDisplay } from './live-display';
 import { MathView } from './math-view';
 
 /**
@@ -30,6 +32,40 @@ export class ElementView {
   readonly interactive = input(false);
 
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly display = inject(LiveDisplay);
+
+  /** True only on the presenter's live screen, where polls and questions fill in. */
+  protected readonly liveOn = computed(() => this.interactive() && this.display.active());
+  protected readonly closed = computed(() => this.liveOn() && this.display.closed().includes(this.element().id));
+
+  protected readonly pollRows = computed(() => {
+    const element = this.element();
+    const result = this.liveOn() ? this.display.results()[element.id] : undefined;
+    const counts = result?.kind === 'poll' ? (result as PollResult).counts : [];
+    const voters = result?.kind === 'poll' ? (result as PollResult).voters : 0;
+
+    // Blank options are dropped on save, so the counts line up with these indexes.
+    const options = element.poll.options.filter((option) => option.trim() !== '');
+
+    return {
+      voters,
+      rows: options.map((label, index) => {
+        const count = counts[index] ?? 0;
+
+        return { label, count, share: voters === 0 ? 0 : Math.round((count / voters) * 100) };
+      }),
+    };
+  });
+
+  protected readonly answers = computed(() => {
+    const result = this.liveOn() ? this.display.results()[this.element().id] : undefined;
+
+    return result?.kind === 'question'
+      ? (result as QuestionResult).answers.filter((answer) => !answer.hidden)
+      : [];
+  });
+
+  protected readonly showAnswers = computed(() => this.display.showAnswers());
 
   protected readonly content = computed(() => contentStyle(this.element()));
   protected readonly shape = computed(() => shapeStyle(this.element()));

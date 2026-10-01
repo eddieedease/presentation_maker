@@ -64,6 +64,8 @@ export const ELEMENT_TYPES = [
   'code',
   'math',
   'shape',
+  'poll',
+  'question',
 ] as const;
 export type ElementType = (typeof ELEMENT_TYPES)[number];
 
@@ -107,6 +109,20 @@ export interface ChartData {
   showValues: boolean;
   showAxis: boolean;
 }
+/** Poll elements: the prompt is the element's `text`, the choices live here. */
+export interface PollData {
+  options: string[];
+  /** Let people tick more than one option. */
+  multiple: boolean;
+}
+
+/** Elements the audience answers from their phones during a live session. */
+export const INTERACTIVE_TYPES: readonly ElementType[] = ['poll', 'question'];
+
+export function isInteractive(element: Pick<SlideElement, 'type'>): boolean {
+  return INTERACTIVE_TYPES.includes(element.type);
+}
+
 export type ObjectFit = 'cover' | 'contain' | 'fill';
 export type BackgroundType = 'color' | 'gradient' | 'image';
 
@@ -152,6 +168,7 @@ export interface SlideElement {
   videoId: string;
   table: TableData;
   chart: ChartData;
+  poll: PollData;
   style: ElementStyle;
   animation: { type: Animation; order: number };
 }
@@ -301,6 +318,19 @@ const ELEMENT_PRESETS: Record<ElementType, ElementOverrides> = {
     },
     style: { fontSize: 18 },
   },
+  poll: {
+    text: 'Which option do you prefer?',
+    width: 760,
+    height: 420,
+    poll: { options: ['Option A', 'Option B', 'Option C'], multiple: false },
+    style: { fontSize: 32 },
+  },
+  question: {
+    text: 'What would you like to ask?',
+    width: 900,
+    height: 420,
+    style: { fontSize: 32 },
+  },
   icon: {
     icon: 'star',
     width: 140,
@@ -338,6 +368,7 @@ export function createElement(type: ElementType, overrides: ElementOverrides = {
     videoId: '',
     table: { headerRow: true, rows: [['', '']] },
     chart: { kind: 'bar', points: [], showValues: true, showAxis: true },
+    poll: { options: [], multiple: false },
     animation: { type: 'none', order: 0 },
     ...preset,
     ...overrides,

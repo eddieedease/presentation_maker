@@ -48,6 +48,22 @@ export const routes: Routes = [
     loadComponent: () => import('./features/editor/editor').then((m) => m.Editor),
   },
   {
+    path: 'live/:id',
+    title: 'Live — Presentation Maker',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/live/live-presenter').then((m) => m.LivePresenter),
+  },
+  {
+    path: 'join',
+    title: 'Join a presentation',
+    loadComponent: () => import('./features/join/join').then((m) => m.Join),
+  },
+  {
+    path: 'join/:code',
+    title: 'Join a presentation',
+    loadComponent: () => import('./features/join/join').then((m) => m.Join),
+  },
+  {
     path: 'p/:slug',
     loadComponent: () => import('./features/present/present').then((m) => m.Present),
   },

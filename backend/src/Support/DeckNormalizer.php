@@ -25,6 +25,7 @@ final class DeckNormalizer
     private const ELEMENT_TYPES = [
         'heading', 'text', 'list', 'quote', 'image', 'video',
         'table', 'chart', 'icon', 'code', 'math', 'shape',
+        'poll', 'question',
     ];
     private const ALIGNMENTS = ['left', 'center', 'right'];
     private const VERTICAL_ALIGNMENTS = ['start', 'center', 'end'];
@@ -35,6 +36,7 @@ final class DeckNormalizer
     private const MAX_TABLE_ROWS = 40;
     private const MAX_TABLE_COLUMNS = 12;
     private const MAX_CHART_POINTS = 24;
+    public const MAX_POLL_OPTIONS = 8;
     private const ANIMATIONS = ['none', 'fade-in', 'fade-up', 'fade-left', 'fade-right', 'zoom-in', 'highlight'];
     private const BACKGROUND_TYPES = ['color', 'gradient', 'image'];
 
@@ -146,6 +148,7 @@ final class DeckNormalizer
             ),
             'table'     => self::normalizeTable($element['table'] ?? null),
             'chart'     => self::normalizeChart($element['chart'] ?? null),
+            'poll'      => self::normalizePoll($element['poll'] ?? null),
             'style'    => [
                 'fontSize'        => self::number($style['fontSize'] ?? 32, 8, 400, 32),
                 'fontFamily'      => self::text($style['fontFamily'] ?? '', 120),
@@ -234,6 +237,36 @@ final class DeckNormalizer
             'points'     => $normalized,
             'showValues' => self::bool($chart['showValues'] ?? true, true),
             'showAxis'   => self::bool($chart['showAxis'] ?? true, true),
+        ];
+    }
+
+    /**
+     * Options for a poll element. Blank options are dropped rather than stored,
+     * because the audience would otherwise be offered an empty button.
+     *
+     * @param mixed $input
+     *
+     * @return array<string, mixed>
+     */
+    private static function normalizePoll(mixed $input): array
+    {
+        $poll = is_array($input) ? $input : [];
+        $options = is_array($poll['options'] ?? null) ? array_values($poll['options']) : [];
+
+        $normalized = [];
+        foreach ($options as $option) {
+            $label = self::text($option, 120);
+            if ($label !== '') {
+                $normalized[] = $label;
+            }
+            if (count($normalized) >= self::MAX_POLL_OPTIONS) {
+                break;
+            }
+        }
+
+        return [
+            'options'  => $normalized,
+            'multiple' => self::bool($poll['multiple'] ?? false, false),
         ];
     }
 

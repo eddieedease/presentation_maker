@@ -101,6 +101,60 @@ CREATE TABLE IF NOT EXISTS images (
   CONSTRAINT fk_images_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Live audience sessions: a presenter goes live, phones join with a short code.
+-- deck_snapshot is what phones render, so editing the deck mid-session changes
+-- nothing until the presenter restarts it. outline is the small part the API
+-- validates against on every response: {"slides": [ids], "interactions": [...]}.
+CREATE TABLE IF NOT EXISTS live_sessions (
+  id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  project_id       BIGINT UNSIGNED NOT NULL,
+  user_id          BIGINT UNSIGNED NOT NULL,
+  code             CHAR(6)         NOT NULL,
+  title            VARCHAR(200)    NOT NULL,
+  status           ENUM('live','ended') NOT NULL DEFAULT 'live',
+  current_slide_id VARCHAR(40)     NOT NULL DEFAULT '',
+  version          INT UNSIGNED    NOT NULL DEFAULT 1,
+  rev              INT UNSIGNED    NOT NULL DEFAULT 1,
+  deck_snapshot    JSON            NOT NULL,
+  outline          JSON            NOT NULL,
+  closed           JSON            NOT NULL,
+  started_at       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  ended_at         DATETIME        NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_live_code (code),
+  KEY idx_live_project (project_id, status),
+  KEY idx_live_user (user_id),
+  CONSTRAINT fk_live_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
+  CONSTRAINT fk_live_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS live_participants (
+  session_id  BIGINT UNSIGNED NOT NULL,
+  participant CHAR(32)        NOT NULL,
+  last_seen   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (session_id, participant),
+  KEY idx_live_seen (session_id, last_seen),
+  CONSTRAINT fk_live_participant_session FOREIGN KEY (session_id) REFERENCES live_sessions (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- One row per poll choice, or per open answer. A poll vote replaces the
+-- participant's earlier rows for that element; open answers accumulate.
+CREATE TABLE IF NOT EXISTS live_responses (
+  id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  session_id   BIGINT UNSIGNED NOT NULL,
+  element_id   VARCHAR(40)     NOT NULL,
+  participant  CHAR(32)        NOT NULL,
+  option_index SMALLINT UNSIGNED NULL,
+  body         VARCHAR(600)    NULL,
+  hidden       TINYINT(1)      NOT NULL DEFAULT 0,
+  created_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_live_response_element (session_id, element_id),
+  KEY idx_live_response_participant (session_id, participant),
+  CONSTRAINT fk_live_response_session FOREIGN KEY (session_id) REFERENCES live_sessions (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS migrations (
   id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   name       VARCHAR(191)    NOT NULL,

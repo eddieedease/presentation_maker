@@ -1,0 +1,161 @@
+<div class="min-h-screen bg-ink-950 text-slate-200">
+  @if (deck() === null) {
+    <!-- Enter a code -->
+    <main class="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-10">
+      @if (connecting()) {
+        <div class="text-center">
+          <div class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-indigo-400"></div>
+          <p class="mt-4 text-sm text-slate-500">Joining…</p>
+        </div>
+      } @else {
+        <h1 class="text-2xl font-semibold text-white">Join a presentation</h1>
+        <p class="mt-2 text-sm text-slate-400">Enter the code shown on the presenter's screen.</p>
+
+        <form class="mt-6" (submit)="$event.preventDefault(); submitCode()">
+          <label class="label" for="join-code">Code</label>
+          <input
+            id="join-code"
+            class="field text-center font-mono text-3xl font-bold tracking-[0.3em] uppercase"
+            autocomplete="off"
+            autocapitalize="characters"
+            autocorrect="off"
+            spellcheck="false"
+            inputmode="text"
+            maxlength="6"
+            placeholder="ABC234"
+            [value]="typed()"
+            (input)="onCodeInput($any($event.target).value)"
+          />
+
+          @if (problem(); as message) {
+            <p class="mt-3 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200" role="alert">{{ message }}</p>
+          }
+
+          <button type="submit" class="btn-primary mt-5 w-full py-3 text-base" [disabled]="typed().length !== 6">Join</button>
+        </form>
+
+        <a routerLink="/" class="mt-8 text-center text-xs text-slate-500 hover:text-slate-300">Presentation Maker</a>
+      }
+    </main>
+  } @else {
+    <!-- Following a session -->
+    <main class="mx-auto max-w-3xl px-4 pt-4 pb-16">
+      <header class="mb-3 flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h1 class="truncate text-sm font-semibold text-white">{{ title() }}</h1>
+          <p class="text-xs text-slate-500">
+            @if (status() === 'ended') {
+              Session ended
+            } @else if (slideIndex() >= 0) {
+              Slide {{ slideIndex() + 1 }} of {{ deck()?.slides?.length }}
+            }
+          </p>
+        </div>
+        <button type="button" class="btn-ghost shrink-0 px-3 py-1.5 text-xs" (click)="leave()">Leave</button>
+      </header>
+
+      @if (status() === 'ended') {
+        <div class="mb-4 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+          The presenter has ended this session. Thanks for taking part.
+        </div>
+      }
+
+      @if (slide(); as current) {
+        <div class="overflow-hidden rounded-lg border border-white/10" [style.width.px]="slideWidth()">
+          <app-slide-thumbnail [slide]="current" [width]="slideWidth()" [theme]="deck()!.theme" [omitInteractive]="true" />
+        </div>
+
+        @for (element of interactions(); track element.id) {
+          <section class="panel mt-4 bg-ink-850 p-4">
+            <h2 class="text-base font-semibold text-white">{{ element.text }}</h2>
+
+            @if (element.type === 'poll') {
+              <p class="mt-1 text-xs text-slate-500">
+                {{ element.poll.multiple ? 'Choose as many as you like.' : 'Choose one.' }}
+              </p>
+
+              <div class="mt-3 space-y-2" [attr.role]="element.poll.multiple ? 'group' : 'radiogroup'">
+                @for (option of options(element); track $index) {
+                  <button
+                    type="button"
+                    class="flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left text-base transition disabled:opacity-50"
+                    [class]="isChosen(element, $index) ? 'border-indigo-400 bg-indigo-500/20 text-white' : 'border-white/10 bg-white/5 text-slate-200 active:bg-white/10'"
+                    [attr.role]="element.poll.multiple ? 'checkbox' : 'radio'"
+                    [attr.aria-checked]="isChosen(element, $index)"
+                    [disabled]="isClosed(element)"
+                    (click)="choose(element, $index)"
+                  >
+                    <span
+                      class="grid h-5 w-5 shrink-0 place-items-center border-2 text-[11px] leading-none"
+                      [class]="(element.poll.multiple ? 'rounded' : 'rounded-full') + ' ' + (isChosen(element, $index) ? 'border-indigo-400 bg-indigo-400 text-ink-950' : 'border-slate-500')"
+                    >
+                      @if (isChosen(element, $index)) {
+                        ✓
+                      }
+                    </span>
+                    <span class="min-w-0 break-words">{{ option }}</span>
+                  </button>
+                }
+              </div>
+
+              @if (isClosed(element)) {
+                <p class="mt-3 text-sm text-amber-300">Voting is closed.</p>
+              } @else {
+                <button
+                  type="button"
+                  class="btn-primary mt-4 w-full py-3 text-base"
+                  [disabled]="!isDirty(element) || sending() === element.id"
+                  (click)="sendVote(element)"
+                >
+                  {{ mine(element).choices ? 'Change my vote' : 'Send vote' }}
+                </button>
+              }
+            } @else {
+              @if (isClosed(element)) {
+                <p class="mt-3 text-sm text-amber-300">This question is closed.</p>
+              } @else if (answersLeft(element) > 0) {
+                <textarea
+                  class="field mt-3 text-base"
+                  rows="3"
+                  [attr.maxlength]="maxLength"
+                  placeholder="Type your answer"
+                  [value]="draft(element)"
+                  (input)="setDraft(element, $any($event.target).value)"
+                ></textarea>
+                <div class="mt-1 flex justify-between text-xs text-slate-500">
+                  <span>{{ answersLeft(element) }} of {{ maxAnswers }} answers left</span>
+                  <span>{{ draft(element).length }}/{{ maxLength }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="btn-primary mt-3 w-full py-3 text-base"
+                  [disabled]="draft(element).trim() === '' || sending() === element.id"
+                  (click)="sendAnswer(element)"
+                >
+                  Send
+                </button>
+              } @else {
+                <p class="mt-3 text-sm text-slate-400">You have used all of your answers for this question.</p>
+              }
+
+              @if (mine(element).answers?.length) {
+                <p class="mt-4 text-xs font-semibold tracking-wide text-slate-500 uppercase">Your answers</p>
+                <ul class="mt-1.5 space-y-1.5">
+                  @for (answer of mine(element).answers; track $index) {
+                    <li class="rounded-lg bg-white/5 px-3 py-2 text-sm break-words">{{ answer }}</li>
+                  }
+                </ul>
+              }
+            }
+
+            @if (notice()[element.id]) {
+              <p class="mt-3 text-sm text-slate-300" role="status">{{ notice()[element.id] }}</p>
+            }
+          </section>
+        }
+      } @else if (status() === 'live') {
+        <p class="mt-8 text-center text-sm text-slate-500">Waiting for the presenter…</p>
+      }
+    </main>
+  }
+</div>

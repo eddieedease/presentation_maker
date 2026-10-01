@@ -157,6 +157,66 @@
       }
     }
 
+    @case ('poll') {
+      <div style="display:flex;flex-direction:column;gap:.45em;width:100%;height:100%;white-space:normal">
+        <div style="font-weight:700;line-height:1.2;margin-bottom:.15em">{{ element().text }}</div>
+
+        @for (row of pollRows().rows; track $index) {
+          <div style="position:relative;flex:1 1 0;min-height:0;max-height:3em;display:flex;align-items:center;justify-content:space-between;gap:1em;padding:0 .7em;border-radius:.4em;overflow:hidden;background:rgba(128,128,128,.18);font-size:.75em">
+            <div
+              style="position:absolute;top:0;bottom:0;left:0;background:#6366f1;opacity:.6;transition:width .5s ease"
+              [style.width.%]="row.share"
+            ></div>
+            <span style="position:relative">{{ row.label }}</span>
+            @if (liveOn()) {
+              <span style="position:relative;font-variant-numeric:tabular-nums;white-space:nowrap">
+                {{ row.count }} · {{ row.share }}%
+              </span>
+            }
+          </div>
+        } @empty {
+          <div style="opacity:.5;font-size:.6em">Add at least two options in the inspector.</div>
+        }
+
+        @if (liveOn()) {
+          <div style="font-size:.55em;opacity:.65;text-align:right">
+            {{ pollRows().voters }} {{ pollRows().voters === 1 ? 'vote' : 'votes' }}{{ closed() ? ' · voting closed' : '' }}
+          </div>
+        }
+      </div>
+    }
+
+    @case ('question') {
+      <div style="display:flex;flex-direction:column;gap:.5em;width:100%;height:100%;white-space:normal">
+        <div style="font-weight:700;line-height:1.2">{{ element().text }}</div>
+
+        @if (liveOn()) {
+          @if (showAnswers()) {
+            <div style="flex:1 1 0;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:.5em;overflow:hidden">
+              @for (answer of answers(); track answer.id) {
+                <div style="max-width:100%;padding:.35em .7em;border-radius:.5em;background:rgba(128,128,128,.2);font-size:.65em;line-height:1.3">
+                  {{ answer.text }}
+                </div>
+              } @empty {
+                <div style="opacity:.5;font-size:.6em">Waiting for answers…</div>
+              }
+            </div>
+          } @else {
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;opacity:.5;font-size:.6em">
+              Answers are hidden — press V to show them
+            </div>
+          }
+          <div style="font-size:.55em;opacity:.65;text-align:right">
+            {{ answers().length }} {{ answers().length === 1 ? 'answer' : 'answers' }}{{ closed() ? ' · closed' : '' }}
+          </div>
+        } @else {
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;border:2px dashed currentColor;opacity:.35;font-size:.55em;border-radius:.6em;text-align:center;padding:0 1em">
+            Answers from the audience appear here during a live session
+          </div>
+        }
+      </div>
+    }
+
     @case ('quote') {
       <blockquote style="margin:0;padding:0;width:100%;background:transparent;box-shadow:none;font-style:inherit">
         {{ element().text }}

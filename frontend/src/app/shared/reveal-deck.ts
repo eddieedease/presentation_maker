@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   input,
+  output,
   viewChild,
 } from '@angular/core';
 import Reveal, { RevealApi } from 'reveal.js/dist/reveal.esm.js';
@@ -81,6 +82,10 @@ export class RevealDeck implements AfterViewInit {
   readonly embedded = input(false);
   /** Deep-link the current slide in the URL. Wanted on the publish site only. */
   readonly enableHash = input(false);
+  /** Slide to open on. Used instead of the hash where a hash would clobber the route. */
+  readonly startSlide = input(0);
+  /** Index of the slide now showing; fires once on load and on every change. */
+  readonly slideChange = output<number>();
 
   protected readonly canvasWidth = CANVAS_WIDTH;
   protected readonly canvasHeight = CANVAS_HEIGHT;
@@ -143,6 +148,13 @@ export class RevealDeck implements AfterViewInit {
 
     this.instance = instance;
     await instance.initialize();
+    if (this.startSlide() > 0) {
+      instance.slide(this.startSlide());
+    }
+
+    // After initialize, so a deep link to #/3 reports slide 3 rather than 0.
+    this.slideChange.emit(instance.getIndices().h);
+    instance.on('slidechanged', () => this.slideChange.emit(instance.getIndices().h));
   }
 
   private teardown(): void {

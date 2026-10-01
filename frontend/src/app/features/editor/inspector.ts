@@ -198,6 +198,43 @@ export class Inspector {
     }
   }
 
+  // ---- poll --------------------------------------------------------------
+
+  /** Eight is what the phone screen and the slide can both show without scrolling. */
+  protected readonly maxPollOptions = 8;
+
+  private mutatePoll(options: string[], multiple: boolean, record: boolean): void {
+    this.setElement({ poll: { options, multiple } }, record);
+  }
+
+  protected setOption(index: number, value: string): void {
+    const poll = this.element()?.poll;
+    if (poll !== undefined) {
+      this.mutatePoll(poll.options.map((option, i) => (i === index ? value : option)), poll.multiple, false);
+    }
+  }
+
+  protected addOption(): void {
+    const poll = this.element()?.poll;
+    if (poll !== undefined && poll.options.length < this.maxPollOptions) {
+      this.mutatePoll([...poll.options, ''], poll.multiple, true);
+    }
+  }
+
+  protected removeOption(index: number): void {
+    const poll = this.element()?.poll;
+    if (poll !== undefined) {
+      this.mutatePoll(poll.options.filter((_, i) => i !== index), poll.multiple, true);
+    }
+  }
+
+  protected setMultiple(multiple: boolean): void {
+    const poll = this.element()?.poll;
+    if (poll !== undefined) {
+      this.mutatePoll(poll.options, multiple, true);
+    }
+  }
+
   // ---- input plumbing ----------------------------------------------------
 
   /** Snapshots history once, at the start of a drag or typing session. */
