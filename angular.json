@@ -99,6 +99,11 @@
                   "output": ""
                 },
                 {
+                  "glob": "index.php",
+                  "input": "backend/public",
+                  "output": ""
+                },
+                {
                   "glob": "install.php",
                   "input": "backend/public",
                   "output": ""

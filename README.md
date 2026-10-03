@@ -315,9 +315,14 @@ must return **403**.
 
 ### Notes
 
-- **Subdirectories work.** Install at `example.com/decks/` and the installer
-  rewrites the frontend's `<base href>` and stores matching URLs. Nothing to
-  configure by hand.
+- **Subdirectories work.** Install at `example.com/decks/` and `index.php`
+  serves the app with a matching `<base href>`, while the installer stores
+  matching URLs. Nothing to configure by hand, and upgrades keep working.
+  Another site at the web root (say a static Angular site) does not get in the
+  way: the subfolder's own `.htaccess` takes over its rewrites. If that root
+  site uses an Angular service worker, exclude the subfolder from its
+  `navigationUrls` (`"!/decks/**"`), or it answers those URLs with its own
+  `index.html` for returning visitors.
 - **Requires PHP 8.1+** and `pdo_mysql`. Most hosts let you pick the PHP version
   in the control panel.
 - **To reinstall**, delete `app/config.php` and re-upload `install.php`. Your

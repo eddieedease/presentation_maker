@@ -492,17 +492,8 @@ function performInstall(array $db, array $site, array $mail, string $configPath,
     }
     @chmod($configPath, 0640);
 
-    // 5. Point the built frontend at this directory, so the same bundle works
-    //    at the web root and in a subfolder.
-    $indexPath = __DIR__ . '/index.html';
-    $base = baseDirectory() . '/';
-    if (is_file($indexPath) && is_writable($indexPath)) {
-        $html = (string) file_get_contents($indexPath);
-        $patched = preg_replace('#<base href="[^"]*">#', '<base href="' . e($base) . '">', $html, 1);
-        if (is_string($patched)) {
-            file_put_contents($indexPath, $patched);
-        }
-    }
+    // The frontend's <base href> needs no step here: index.php sets it per
+    // request, so a subfolder install also survives upgrades.
 }
 
 // ---- Step 4: finished ------------------------------------------------------

@@ -1,6 +1,10 @@
 # Presentation Maker — web root
 Options -Indexes
 
+# index.php serves index.html with a <base href> matching this directory, so
+# the app works at the web root and in a subfolder alike.
+DirectoryIndex index.php
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
 
@@ -11,13 +15,16 @@ Options -Indexes
   # API requests go to the PHP front controller.
   RewriteRule ^api(/.*)?$ api.php [QSA,L]
 
+  # The raw index.html has <base href="/">; always serve it through index.php.
+  RewriteRule ^index\.html$ index.php [L]
+
   # Serve real files and directories as they are (assets, install.php).
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
   # Everything else is an Angular route, including /p/<slug>.
-  RewriteRule ^ index.html [L]
+  RewriteRule ^ index.php [L]
 </IfModule>
 
 <IfModule mod_deflate.c>
